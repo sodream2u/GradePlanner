@@ -1,0 +1,1114 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>예산</title>
+  <link rel="stylesheet" href="../assets/css/tw-base.css?v=20261117f">
+  <script>window.__GP_PAGE__ = 'budget';</script>
+  <script src="../assets/js/fb-boot.js?v=20261117f"></script>
+  <script src="../assets/js/firebase-config.js?v=20261117f"></script>
+  <script src="../assets/js/gas-shim.js?v=20261117f"></script>
+  <script src="../assets/js/app-data.js?v=20261117f"></script>
+  <script src="../assets/js/dnd.js?v=20261117f"></script>
+  <script src="../assets/js/xlsx-lite.js?v=20261117f"></script>
+  <script src="../assets/js/gsheet-export.js?v=20261117f"></script>
+  <style>
+    body { font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', 'Noto Sans KR', sans-serif; background:#f8fafc; }
+    /* ---- 구글 스프레드시트 느낌의 표 ---- */
+    #gridWrap { overflow:auto; max-height:70vh; background:#fff; border:1px solid #cbd5e1; border-radius:8px; }
+    table.sheet { border-collapse:separate; border-spacing:0; table-layout:fixed; font-size:14px; width:100%; }
+    .sheet th, .sheet td { border-right:1px solid #d9dde3; border-bottom:1px solid #d9dde3; padding:0; background:#fff; position:relative; }
+    .sheet thead th { background:#f1f3f4; color:#5f6368; text-align:center; position:sticky; z-index:3; font-weight:400; }
+    .sheet thead tr.letters th { top:0; height:22px; font-size:12px; }
+    .sheet thead tr.heads th { top:22px; height:32px; font-weight:700; color:#202124; background:#f8f9fa; border-bottom:2px solid #9aa0a6; }
+    .sheet .rn { width:68px; min-width:68px; background:#f1f3f4; color:#5f6368; text-align:center; font-size:12px; position:sticky; left:0; z-index:2; font-weight:400; }
+    .sheet thead .rn { z-index:4; }
+    .sheet .rn .rtools { display:none; align-items:center; justify-content:center; gap:3px; height:32px; }
+    .sheet .rn .rtools > * { font-style:normal; font-size:13px; line-height:1; padding:2px; border-radius:4px; cursor:pointer; background:transparent; border:0; }
+    .sheet .rn .rtools > *:hover { background:#dbe4f3; }
+    .sheet .rn .grip { cursor:grab; color:#6b7280; letter-spacing:-2px; touch-action:none; -webkit-user-select:none; user-select:none; }
+    @media (hover:none) {   /* 터치 화면: 마우스를 올릴 수 없으므로 줄 도구(이동·색·삭제)를 항상 보여 줌 */
+      .sheet tbody tr:not(.blank) .rn span { display:none; }
+      .sheet tbody tr:not(.blank) .rn .rtools { display:flex; gap:0; }
+      .sheet .rn .rtools > * { padding:6px 5px; }
+    }
+    .sheet .rn button[data-del] { color:#b91c1c; }
+    .sheet tbody tr:hover .rn span { display:none; }
+    .sheet tbody tr:hover .rn .rtools { display:flex; }
+    .sheet tbody tr.blank:hover .rn span { display:inline; }
+    .sheet tr.dragging { opacity:.35; }
+    .sheet tr.drop-before > * { box-shadow:inset 0 3px 0 #1a73e8; }
+    .sheet tr.drop-after > * { box-shadow:inset 0 -3px 0 #1a73e8; }
+    .rsz { position:absolute; top:0; right:-3px; width:7px; height:100%; cursor:col-resize; z-index:6; }
+    .sheet th:last-child .rsz { right:0; }
+    .rsz:hover, body.resizing .rsz.on { background:rgba(26,115,232,.45); }
+    body.resizing { cursor:col-resize; user-select:none; }
+    .pop { position:fixed; z-index:60; background:#fff; border:1px solid #cbd5e1; border-radius:10px; padding:8px; box-shadow:0 8px 24px rgba(0,0,0,.18); display:none; width:176px; flex-wrap:wrap; gap:6px; }
+    .pop button.sw { width:30px; height:30px; border-radius:8px; border:2px solid #fff; box-shadow:0 0 0 1px #cbd5e1; }
+    .pop button.sw:hover { box-shadow:0 0 0 2px #1a73e8; }
+    .pop button.none { width:100%; font-size:12px; padding:4px; border:1px solid #cbd5e1; border-radius:6px; color:#475569; }
+    /* 행 색 (커서가 있는 행 강조보다 먼저 선언해 둠) */
+    .sheet tbody tr.colored td { background:var(--rc); }
+    .sheet tbody tr.colored td.calc { background:var(--rc); }
+    .sheet tbody tr.colored td.linkc a, .sheet tbody tr.colored .attbtn { background:var(--rc); }
+    .sheet input.cell { width:100%; box-sizing:border-box; height:32px; border:0; padding:4px 8px; background:transparent; outline:none; font:inherit; color:#202124; text-overflow:ellipsis; }
+    .sheet input.cell.num { text-align:right; }
+    .sheet td:focus-within { outline:2px solid #1a73e8; outline-offset:-2px; z-index:1; }
+    .sheet td.calc { padding:4px 8px; text-align:right; background:#f8fafc; font-weight:600; height:32px; }
+    .sheet td.linkc a { position:absolute; right:6px; top:50%; transform:translateY(-50%); color:#1a73e8; font-size:12px; text-decoration:none; background:#fff; padding-left:2px; }
+    .sheet input.hcell { width:100%; height:32px; border:0; padding:4px 8px; background:transparent; outline:none; font:inherit; font-weight:700; text-align:center; color:#202124; }
+    .sheet tfoot th, .sheet tfoot td { background:#f1f5f9; font-weight:700; padding:6px 8px; position:sticky; bottom:0; z-index:2; border-top:2px solid #9aa0a6; }
+    .sheet tr.blank td { background:#fcfcfd; }
+    /* 지금 커서가 있는 행 강조 */
+    .sheet tbody tr:focus-within td { background:#e3edff; }
+    .sheet tbody tr:focus-within td.calc { background:#d3e2fc; }
+    .sheet tbody tr:focus-within .rn { background:#bcd2fa; color:#1a56c4; font-weight:700; box-shadow:inset 4px 0 0 #1a73e8; }
+    .sheet tbody tr:focus-within td:focus-within { background:#fff; }
+    .attbtn { position:absolute; right:4px; top:50%; transform:translateY(-50%); display:inline-flex; align-items:center; gap:2px; line-height:1; padding:4px 5px; border-radius:7px; background:transparent; border:0; color:#94a3b8; opacity:.7; z-index:1; }
+    .attbtn svg { display:block; }
+    .attbtn:hover { opacity:1; background:#eef2ff; color:#4f46e5; }
+    .attbtn.has { opacity:1; color:#4f46e5; background:#eef2ff; }   /* 첨부가 있을 때: 선명하게 */
+    .attbtn b { font-size:10px; color:#4338ca; margin-left:1px; }
+    td.attc input.cell { padding-right:46px; }
+    .sheet select.cell { width:100%; height:32px; border:0; padding:0 18px 0 8px; background:transparent; font:inherit; color:#202124; outline:none; -webkit-appearance:none; appearance:none; cursor:pointer; text-overflow:ellipsis; }
+    .sheet td.selc::after { content:'▾'; position:absolute; right:7px; top:50%; transform:translateY(-50%); color:#9aa0a6; font-size:11px; pointer-events:none; }
+    .sheet td.chkc { text-align:center; }
+    .sheet td.chkc input { width:17px; height:17px; vertical-align:middle; accent-color:#4f46e5; cursor:pointer; margin:0; }
+    #pickBody input:disabled { background:#f1f5f9; }
+    .sheet input.cell.pick { cursor:pointer; }
+    .sheet input.cell.pick::placeholder { color:#9aa0a6; font-size:12px; }
+    .sheet input.cell[readonly]:not(.pick) { color:#64748b; }
+    .sheet tr.addrow td { padding:5px 0; background:#fafbfc; border-bottom:1px solid #d9dde3; }
+    .sheet .addin { position:sticky; left:0; text-align:center; }
+    .colx { position:absolute; right:2px; top:1px; font-size:11px; color:#9aa0a6; display:none; line-height:1; }
+    .sheet th:hover .colx { display:block; } .colx:hover { color:#b91c1c; }
+  </style>
+  <link rel="stylesheet" href="../assets/css/tw-util.css?v=20261117f">
+</head>
+<body class="p-4 md:p-6 text-slate-800">
+  <div class="max-w-7xl mx-auto space-y-4">
+    <div class="flex flex-wrap items-center justify-between gap-2">
+      <div class="flex items-center gap-2"><h1 class="text-2xl font-bold">예산</h1><button id="wideBtn" type="button" title="화면 넓게 보기 (누를 때마다 기본 → 넓게 → 화면 전체)" aria-label="화면 넓게 보기" class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 text-slate-600 hover:bg-slate-200"><svg class="w-4 h-4" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="18 8 22 12 18 16"></polyline><polyline points="6 8 2 12 6 16"></polyline><line x1="2" y1="12" x2="22" y2="12"></line></svg><span id="wideLbl">기본</span></button></div>
+      <div class="flex flex-wrap items-center gap-2 justify-end" id="tabs"></div>
+    </div>
+    <div class="flex flex-wrap items-center gap-2">
+      <button id="btn-xlsx" class="px-4 py-2 rounded-lg text-sm font-semibold bg-emerald-600 text-white hover:bg-emerald-700">⬇ 엑셀로 내보내기</button>
+      <button id="btn-gsheet" class="px-4 py-2 rounded-lg text-sm font-semibold bg-white border border-slate-300 hover:bg-slate-50">구글 스프레드시트로 내보내기</button>
+      <button id="btn-refresh" class="px-3 py-2 rounded-lg text-sm font-semibold bg-white border border-slate-300 hover:bg-slate-50" title="다른 사람이 바꾼 내용을 다시 불러옵니다">↻ 새로고침</button>
+      <span id="saveState" class="text-xs text-slate-400 ml-auto"></span>
+    </div>
+    <div id="exportMsg" class="text-sm hidden"></div>
+    <div id="cards" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3"></div>
+    <div id="supplyBox" class="hidden space-y-3"></div>
+    <div class="flex flex-wrap items-center gap-2" id="filters"></div>
+    <div class="flex flex-wrap items-center gap-2 hidden" id="sheetTools"></div>
+    <div id="gridWrap"></div>
+    <p class="text-xs text-slate-400">표의 칸을 눌러 바로 고치면 자동으로 저장됩니다. 맨 아래 빈 줄에 입력하면 새 줄이 추가되고, 구글 스프레드시트·엑셀에서 복사한 여러 칸을 붙여넣을 수도 있습니다. (Enter: 아래 칸, Tab: 오른쪽 칸, Esc: 되돌리기) · 표 맨 아래 + 를 누르면 빈 줄이 5개 늘어납니다. · 줄에 마우스를 올리면 ⠿(끌어서 순서 변경) 🎨(줄 색깔) ✕(삭제)가 나타나고, 위쪽 A·B·C 칸의 경계선을 끌면 열 너비를 바꿀 수 있습니다.</p>
+  </div>
+
+  <div id="colorPop" class="pop"></div>
+
+  <!-- 예산 페이지 추가 -->
+  <div id="addModal" class="fixed inset-0 bg-black/40 hidden items-center justify-center p-4 z-50">
+    <div class="bg-white rounded-2xl shadow-xl w-full max-w-lg p-5 space-y-3 max-h-[92vh] overflow-y-auto">
+      <h3 id="aTitle" class="font-bold text-lg">예산 페이지 추가</h3>
+      <div id="aNameBox"><label class="text-sm font-semibold block mb-1">예산명 <span class="font-normal text-slate-400">(위쪽 버튼 이름이 됩니다)</span></label>
+        <input id="aName" class="w-full border rounded-lg px-3 py-2 text-sm" placeholder="예: 체험학습비"></div>
+      <div><label class="text-sm font-semibold block mb-1">열 순서 <span class="font-normal text-slate-400">(끌어서 순서를 바꾸고, ✕ 로 뺄 수 있어요)</span></label>
+        <div id="aOrder" class="flex flex-wrap gap-1.5 p-2 border rounded-lg bg-slate-50 min-h-[46px]"></div></div>
+      <div><label class="text-sm font-semibold block mb-1">추가할 열 <span class="font-normal text-slate-400">(누르면 열 순서 맨 끝에 들어가고, 끌어서 원하는 자리에 넣을 수도 있어요)</span></label>
+        <div id="aExtra" class="flex flex-wrap gap-1.5 min-h-[34px]"></div>
+        <div class="flex gap-2 mt-2"><input id="aNew" class="flex-1 border rounded-lg px-3 py-1.5 text-sm" placeholder="새 열 이름 (예: 구입처)"><button id="aNewAdd" type="button" class="px-3 py-1.5 rounded-lg bg-slate-100 text-sm font-semibold hover:bg-slate-200">+ 열 추가</button></div></div>
+      <div><label class="text-sm font-semibold block mb-1">필터 기준 <span class="font-normal text-slate-400">(표 위에 이 열로 골라 보는 칸이 생겨요. 여러 개 고를 수 있어요)</span></label>
+        <div id="aFilt" class="flex flex-wrap gap-x-4 gap-y-1 text-sm"></div></div>
+      <p id="aErr" class="text-sm font-semibold text-red-600 hidden"></p>
+      <div class="flex justify-end gap-2 pt-1">
+        <button id="aCancel" class="px-4 py-2 rounded-lg bg-slate-100 text-sm font-semibold">취소</button>
+        <button id="aOk" class="px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-semibold">추가</button>
+      </div>
+    </div>
+  </div>
+  <!-- 학급·수량 선택 -->
+  <div id="pickModal" class="fixed inset-0 bg-black/40 hidden items-center justify-center p-4 z-50">
+    <div class="bg-white rounded-2xl shadow-xl w-full max-w-md p-5 space-y-3 max-h-[90vh] overflow-y-auto">
+      <h3 id="pickTitle" class="font-bold text-lg"></h3>
+      <div id="pickBody" class="space-y-2"></div>
+      <div class="flex justify-end gap-2 pt-1"><button id="pickNo" class="px-4 py-2 rounded-lg bg-slate-100 text-sm font-semibold">취소</button><button id="pickOk" class="px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-semibold">확인</button></div>
+    </div>
+  </div>
+  <!-- 비고 첨부 -->
+  <div id="attModal" class="fixed inset-0 bg-black/40 hidden items-center justify-center p-4 z-50">
+    <div class="bg-white rounded-2xl shadow-xl w-full max-w-md p-5 space-y-3 max-h-[90vh] overflow-y-auto">
+      <div class="flex items-center justify-between"><h3 class="font-bold text-lg">비고 첨부 <span id="attTitle" class="text-sm font-normal text-slate-400"></span></h3><button id="attClose" class="text-slate-400 text-xl leading-none">✕</button></div>
+      <div id="attList" class="space-y-2"></div>
+      <div>
+        <label class="inline-block px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-semibold cursor-pointer hover:bg-indigo-700">＋ 이미지·파일 추가<input id="attFile" type="file" multiple class="hidden"></label>
+        <span class="text-xs text-slate-400 ml-2">사진은 자동으로 줄여 올립니다 · 그 밖의 파일은 700KB까지</span>
+      </div>
+      <p id="attMsg" class="text-sm text-slate-500"></p>
+      <p class="text-xs text-slate-400">글로 남기는 메모는 비고 칸에 그대로 입력하세요.</p>
+    </div>
+  </div>
+<script>
+const { getCol, num, str, natural } = GP;
+const fmt = (n) => Number(n).toLocaleString();
+const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const $ = (id) => document.getElementById(id);
+const COLN = (i) => { let s = ''; i++; while (i > 0) { const m = (i - 1) % 26; s = String.fromCharCode(65 + m) + s; i = Math.floor((i - 1) / 26); } return s; };
+
+// ======================= 표 종류 정의 =======================
+//  t: text(기본) | num | link | calc | sel(드롭다운) | chk(체크박스) | spec(학년회비류는 학급 선택) | sup(희망학급·학급별 수량)
+const PUMUI = ['해당없음', '품의중', '품의완료', '결재완료'];
+const isFeeName = (n) => /학년회비|친목회비/.test(str(n));
+const splitList = (s) => str(s).split(',').map((x) => x.trim()).filter(Boolean);
+const classNames = () => ((lists && lists.classes) || []).filter((c) => c !== '학년공통');
+const isFeeRow = (F, r) => !!(F && F.name && F.spec && (F.fee || (r && isFeeName(r[F.name]))));   // 학년회비 페이지는 모든 줄이 학년회비 줄
+const feePlus = (F, r) => isFeeRow(F, r) && splitList(r[F.spec]).indexOf('+') >= 0;   // 규격에 + : 돈을 모은 줄
+const feeClasses = (F, r) => isFeeRow(F, r) && splitList(r[F.spec]).some((c) => classNames().indexOf(c) >= 0);   // 규격에 학급을 체크한 줄
+// 학습준비물: supply_class = "1반, 2반", supply_class_num = "5, 2"  (0이 아닌 학급만, 같은 순서)
+const parseSup = (r) => { const cs = splitList(r && r.supply_class), ns = splitList(r && r.supply_class_num); return cs.map((c, i) => ({ c, n: num(ns[i]) })).filter((x) => x.n > 0); };
+const supQty = (r) => { const cs = splitList(r && r.supply_class); return cs.length ? parseSup(r).reduce((a, x) => a + x.n, 0) : splitList(r && r.supply_class_num).reduce((a, n) => a + num(n), 0); };
+const supText = (r, withTotal) => { const t = parseSup(r).map((x) => x.c + ' ' + fmt(x.n) + '개'); if (withTotal && t.length) t.push('총 ' + fmt(supQty(r)) + '개'); return t.join(', '); };
+const CARD_PALETTE = ['#CFE2F3', '#FCE5CD', '#D9EAD3', '#FFFEB5', '#E4D7F5'];   // 예산 카드 기본 색 (관리자 > 예산 설정과 같은 순서)
+const cardColor = (name) => { name = str(name).trim(); if (!name) return ''; const bs = (lists && lists.budgets) || []; const i = bs.findIndex((b) => b.name === name || b.name.split('/')[0] === name); return i < 0 ? '' : (bs[i].color || CARD_PALETTE[i % CARD_PALETTE.length]); };   // 예산종류에 해당하는 카드 색
+// 줄 색: 직접 정한 색 > 학년공통 준비물(노랑) > 예산종류의 카드 색
+const rowBg = (kind, r) => (r && r.row_color ? String(r.row_color) : (r && kind.sem && hasClass(r, '학년공통') ? '#e0f2fe' : (r && kind.F && kind.F.name ? cardColor(r[kind.F.name]) : '')));   // 화면과 같은 줄 색깔
+const budgetOpts = () => [...new Set(((lists && lists.budgets) || []).filter((b) => (b.pages || ['budget']).indexOf(mode) >= 0).map((b) => b.name))];   // 지금 보는 예산 페이지에 배정된 예산종류만
+
+// 머리글 이름으로 열 종류를 정함 (학년 예산과 추가한 예산 페이지가 같은 방식으로 동작)
+function colsFor(list) {
+  const nm = (h) => String(h.name || '').trim(); const by = (n) => list.find((h) => nm(h) === n);
+  const F = { name: (by('예산종류') || {}).k, spec: (by('규격') || {}).k, num: (by('수량') || {}).k, price: (by('단가') || {}).k, sup: !!by('학급별수량') };
+  const canCalc = !!((F.num || F.sup) && F.price);
+  const qtyOf = (r) => (F.sup && supQty(r) > 0 ? supQty(r) : (F.num ? num(r[F.num]) : 0));   // 학급별수량 칸은 학습준비물처럼 학급별 수량의 합
+  const cols = list.map((h) => {
+    const n = nm(h), base = { label: h.name, k: h.k, w: 150, cid: h.cid };
+    if (h.calc || ((n === '금액(합)' || n === '금액') && canCalc)) return { label: h.name, w: 110, t: 'calc', sum: 1, id: 'calc', cid: h.cid, calc: (r) => qtyOf(r) * num(r[F.price]) };
+    if (n === '예산종류') return Object.assign(base, { w: 140, t: 'sel', opts: budgetOpts });
+    if (n === '품명') return Object.assign(base, { w: 180 });
+    if (n === '규격') return Object.assign(base, { w: 160, t: 'spec' });
+    if (n === '수량') return Object.assign(base, { w: 70, t: 'num', ro: (r) => feeClasses(F, r) });
+    if (n === '학급별수량') return Object.assign(base, { k: 'supply_class', w: 110, t: 'sup' });
+    if (n === '단가') return Object.assign(base, { w: 100, t: 'num' });
+    if (n === '링크') return Object.assign(base, { w: 120, t: 'link' });
+    if (n === '품의상황') return Object.assign(base, { w: 100, t: 'sel', opts: () => PUMUI });
+    if (n === '완료상태') return Object.assign(base, { w: 80, t: 'chk' });
+    if (n === '비고') return Object.assign(base, { w: 190, attach: 1 });
+    return base;
+  });
+  return { cols, F };
+}
+function budgetKind() {
+  const { cols, F } = colsFor([{ name: '예산종류', k: 'budget_name' }, { name: '품명', k: 'budget_product' }, { name: '규격', k: 'budget_spec' }, { name: '수량', k: 'budget_num' }, { name: '단가', k: 'budget_price' },
+    { name: '금액(합)', calc: 1 }, { name: '링크', k: 'budget_link' }, { name: '품의상황', k: 'budget_pumui' }, { name: '완료상태', k: 'budget_progress' }, { name: '비고', k: 'budget_memo' }]);
+  return { id: 'budget', name: '학년 예산', col: 'data_budget', cols, F, filters: [['예산종류', 'budget_name'], ['품의상황', 'budget_pumui']] };
+}
+function feeKind() {
+  const k = budgetKind();   // 학년 예산과 같은 열 · 같은 데이터(data_budget) 중 학년회비·친목회비 줄만 따로 모아 보여 줌
+  return Object.assign(k, { id: 'fee', name: '학년회비', F: Object.assign({}, k.F, { fee: true }) });
+}
+function supplyKind(sem) {
+  return { id: 'supply', sem, name: '학습준비물 ' + sem + '학기', col: 'data_supply', cols: [
+    { k: 'supply_product', label: '품명', w: 180 }, { k: 'supply_spec', label: '규격', w: 150 },
+    { k: 'supply_class', label: '수량', w: 110, t: 'sup' }, { k: 'supply_unit', label: '단위', w: 70 }, { k: 'supply_price', label: '단가', w: 100, t: 'num' },
+    { label: '금액(합)', w: 110, t: 'calc', sum: 1, id: 'calc', calc: (r) => num(r.supply_price) * supQty(r) },
+    { k: 'supply_sub', label: '과목', w: 110, t: 'sel', opts: () => ['전교과'].concat(((lists && lists.subs) || []).filter((x) => x !== '전교과')) }, { k: 'supply_link', label: '링크', w: 120, t: 'link' }],
+    filters: [['신청학급', 'supply_class']] };
+}
+const SHEET_COL = 'data_sheet_rows';
+const WATCH = ['data_budget', 'data_supply', 'data_sheet_rows', 'app_config'];
+const own = {};   // 이 화면에서 직접 저장한 횟수(실시간 동기화에서 내 저장과 다른 사람의 저장을 구분)
+const commit = (ops) => { [...new Set(ops.map((o) => o.col))].forEach((c) => { own[c] = (own[c] || 0) + 1; }); return GP.commit(ops); };
+const filesKey = (c) => c.k + '__files';
+
+let sheets = [];                 // 추가한 예산 페이지: [{ id, name, cols: [{ id, name }] }]
+let data = { budget: [], supply: [], sheetRows: [] };
+let mode = 'budget', filters = {}, lists = null, seq = 0, blankN = 1, curYear = new Date().getFullYear(), supplyTotals = {};   // blankN: 맨 아래에 보여 줄 빈 줄 수
+
+let colWidths = {};   // { 표종류id: { 열키: 상대 너비 } }  (모두가 같은 너비로 봅니다)
+const RN = 68;
+const kindOf = (m) => {
+  const k = rawKind(m); const saved = colWidths[k.id] || {};
+  let cols = k.cols.map((c) => { const w = saved[c.k || c.id || 'calc']; return w > 0 ? Object.assign({}, c, { w }) : c; });
+  const od = !k.custom && colWidths.__order && colWidths.__order[k.id];   // 학년 예산·학년회비·학습준비물의 열 순서(머리글을 끌어서 바꾼 것)
+  if (Array.isArray(od)) { const key = (c) => c.k || c.id || 'calc'; cols = cols.map((c, i) => ({ c, i, o: od.indexOf(key(c)) })).sort((a, b) => (a.o < 0 ? 1e3 + a.i : a.o) - (b.o < 0 ? 1e3 + b.i : b.o)).map((x) => x.c); }
+  return Object.assign({}, k, { cols });
+};
+const rawKind = (m) => {
+  if (m === 'budget') return budgetKind();
+  if (m === 'fee') return feeKind();
+  if (m === 'supply1' || m === 'supply2') return supplyKind(m === 'supply1' ? 1 : 2);
+  const sh = shownSheets().find((x) => 'sheet:' + x.id === m); if (!sh) return budgetKind();
+  const { cols, F } = colsFor(sh.cols.map((c) => ({ name: c.name, k: 'f_' + c.id, cid: c.id })));
+  // 추가한 예산 페이지의 필터: 페이지를 만들 때 고른 열(sh.filters = 열 id 목록)
+  const flt = (Array.isArray(sh.filters) ? sh.filters : sh.cols.filter((c) => c.name === '예산종류').map((c) => c.id)).map((id) => sh.cols.find((c) => c.id === id)).filter(Boolean).map((c) => [c.name, 'f_' + c.id]);
+  return { id: 'sheet:' + sh.id, name: sh.name, col: SHEET_COL, custom: sh, cols, F, filters: flt };
+};
+const ord = (r) => (typeof r.row_order === 'number' ? r.row_order : Number(r.row_order) || 0);
+const byOrder = (a, b) => ord(a) - ord(b) || (a._id < b._id ? -1 : a._id > b._id ? 1 : 0);
+const inSupply = (r, sem) => { const m = str(r.supply_year).match(/\d{4}/); return !!m && parseInt(m[0], 10) === curYear && str(r.supply_semester).trim().charAt(0) === String(sem); };
+const srcArr = (kind) => (kind.custom ? data.sheetRows : kind.col === 'data_budget' ? data.budget : data.supply);
+const allRows = (kind) => (kind.custom ? data.sheetRows.filter((r) => r.sheet === kind.custom.id) : kind.id === 'fee' ? data.budget.filter((r) => isFeeName(r.budget_name)) : kind.col === 'data_budget' ? data.budget.filter((r) => !isFeeName(r.budget_name)) : data.supply.filter((r) => inSupply(r, kind.sem)));
+const hasClass = (r, c) => parseSup(r).some((x) => x.c === c) || (!splitList(r && r.supply_class_num).length && splitList(r && r.supply_class).indexOf(c) >= 0);
+const viewRows = (kind) => allRows(kind).filter((r) => kind.filters.every(([, k]) => !filters[k] || (k === 'supply_class' ? hasClass(r, filters[k]) : str(r[k]) === filters[k])));
+const findRow = (kind, id) => allRows(kind).find((r) => r._id === id);
+
+// ======================= 저장(순서대로 하나씩) =======================
+let queue = Promise.resolve(), pendingN = 0, saveTimer = null;
+function setState(kind, msg) {
+  const el = $('saveState'); clearTimeout(saveTimer);
+  if (kind === 'saving') { el.textContent = '저장 중...'; el.className = 'text-xs text-slate-500 ml-auto'; }
+  else if (kind === 'error') { el.textContent = '저장 실패: ' + msg; el.className = 'text-xs font-bold text-red-600 ml-auto'; }
+  else { el.textContent = '✓ 저장되었습니다'; el.className = 'text-xs text-emerald-600 ml-auto'; saveTimer = setTimeout(() => { el.textContent = ''; }, 2500); }
+}
+function enqueue(fn) {
+  pendingN++; setState('saving');
+  queue = queue.then(fn).then(() => { pendingN--; if (!pendingN) setState('ok'); renderCards(); })
+    .catch((e) => { pendingN--; console.error(e); setState('error', e.message); });
+  return queue;
+}
+// 입력 도중 화면을 떠나거나(모바일에서 앱 전환 등) 닫아도 마지막 칸이 저장되도록 함
+const flushActive = () => { const a = document.activeElement; if (a && a.matches && a.matches('input.cell') && a.value !== a._orig) { try { saveCell(a); } catch (e) { console.error(e); } } };
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') flushActive(); });
+window.addEventListener('pagehide', flushActive);
+window.addEventListener('beforeunload', (e) => { if (pendingN > 0) { e.preventDefault(); e.returnValue = ''; } });
+
+function blankDoc(kind, preset) {
+  const d = {}; kind.cols.forEach((c) => { if (c.k) d[c.k] = ''; });
+  Object.assign(d, preset || {});
+  if (kind.custom) d.sheet = kind.custom.id;
+  if (kind.sem) { d.supply_year = String(curYear); d.supply_semester = kind.sem + '학기'; }   // 저장하는 시점의 학년도와 이 페이지의 학기를 자동으로 기록
+  d.row_order = Date.now() * 100 + (seq++ % 100);
+  return d;
+}
+const presetFor = (kind) => { const p = {}; if (kind.id === 'fee') p.budget_name = budgetOpts().find(isFeeName) || '학년회비'; kind.filters.forEach(([, k]) => { if (filters[k] && k !== 'supply_class') p[k] = filters[k]; }); return p; };   // 걸러 보는 중이면 새 줄에 같은 값을 미리 넣어 줌
+const storeVal = (c, v) => (c.t === 'num' ? String(v).replace(/,/g, '').trim() : c.t === 'chk' ? (str(v).trim() && !/^(0|false|n|no|x)$/i.test(str(v).trim()) ? '완료' : '') : String(v));
+
+// ======================= 화면 =======================
+function renderTabs() {
+  const tab = (id, name, on) => '<button data-m="' + esc(id) + '" class="px-4 py-1.5 rounded-full text-sm font-bold ' + (on || mode === id ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200') + '">' + esc(name) + '</button>';
+  $('tabs').innerHTML = tab('budget', '학년 예산') + tab('fee', '학년회비') + tab(/^supply/.test(mode) ? mode : (new Date().getMonth() >= 7 || new Date().getMonth() <= 1 ? 'supply2' : 'supply1'), '학습준비물', /^supply/.test(mode)) + shownSheets().map((s) => tab('sheet:' + s.id, s.name)).join('') +
+    '<button id="tabAdd" title="예산 페이지 추가" aria-label="예산 페이지 추가" class="px-4 py-1.5 rounded-full text-sm font-bold bg-slate-100 text-slate-600 hover:bg-slate-200" style="min-width:5.25rem"><span style="font-size:1.15em;line-height:1">+</span></button>';
+  $('tabs').querySelectorAll('[data-m]').forEach((b) => b.onclick = () => { if (/^supply/.test(b.dataset.m) && /^supply/.test(mode)) return; setMode(b.dataset.m); });
+  $('tabAdd').onclick = () => openAdd('new');
+}
+function setMode(m) { mode = m; filters = {}; blankN = 1; classFilter(); renderAll(); }
+// 상단에서 학급을 골라 두면: 예산종류로 거르는 추가 예산 페이지(예: 학급운영비)는 그 반의 예산종류만 보여 줌
+function selClassName() {
+  try { if (window.__gpSel && window.__gpSel.name) return String(window.__gpSel.name); } catch (e) { /* 무시 */ }
+  try { const n = parseInt(localStorage.getItem('gp_cls'), 10); if (n > 0) return (lists && lists.classes && lists.classes[n - 1]) || (window.__cn ? window.__cn(n) : n + '반'); } catch (e) { /* 무시 */ }
+  return '';
+}
+function classFilter(cls) {
+  const kind = rawKind(mode); if (!kind.custom || !kind.F.name || !kind.filters.some(([, k]) => k === kind.F.name)) return false;
+  const c = cls === undefined ? selClassName() : cls; const k = kind.F.name;
+  if (!c) { if (cls !== undefined) delete filters[k]; return true; }
+  const hit = budgetOpts().find((o) => o === c || o.indexOf(c + ' ') === 0);
+  if (hit) filters[k] = hit; else if (cls !== undefined) delete filters[k];
+  return true;
+}
+window.__gpClassChanged = (sel) => { if (classFilter(sel && sel.name ? String(sel.name) : '')) { renderFilters(); renderGrid(); } };
+function renderAll() { renderTabs(); renderCards(); renderSupplyBox(); renderFilters(); renderTools(); renderGrid(); }
+
+async function renderCards() {
+  const box = $('cards'); const pg = mode;   // 카드는 관리자 > 예산 설정에서 이 예산 페이지에 표시하기로 한 것만 나옵니다.
+  const all = (await GP.buildBudgetCards(pg)); if (pg !== mode) return;
+  const cards = all.filter((c) => c.kind !== 'classStats'), stats = all.filter((c) => c.kind === 'classStats');
+  box.innerHTML = cards.map((c, i) => '<div class="border border-slate-200 rounded-xl p-3 shadow-sm" style="background:' + esc(c.color || cardColor(c.name) || CARD_PALETTE[i % CARD_PALETTE.length]) + '"><div class="font-bold text-sm border-b border-black/10 pb-1 mb-1">' + esc(c.name) + '</div>' +
+    '<div class="flex justify-between text-xs"><span>배정액</span><b>' + fmt(c.assigned) + '</b></div><div class="flex justify-between text-xs"><span>사용액</span><b>' + fmt(c.used) + '</b></div>' +
+    '<div class="flex justify-between text-sm mt-1 pt-1 border-t border-black/10"><span>잔액</span><b class="' + (c.balance < 0 ? 'text-red-600' : 'text-blue-700') + '">' + fmt(c.balance) + '</b></div></div>').join('') +
+    '<div class="flex items-end"><button id="cardAdmin" class="flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold bg-indigo-50 text-indigo-600 border border-indigo-100" title="관리자 페이지로 이동 (예산 카드 관리)" aria-label="관리자"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12.2 2.5h-.4a2 2 0 0 0-2 2v.2a2 2 0 0 1-1 1.7l-.4.3a2 2 0 0 1-2 0l-.2-.1a2 2 0 0 0-2.7.7l-.2.4a2 2 0 0 0 .7 2.7l.2.1a2 2 0 0 1 1 1.7v.5a2 2 0 0 1-1 1.7l-.2.1a2 2 0 0 0-.7 2.7l.2.4a2 2 0 0 0 2.7.7l.2-.1a2 2 0 0 1 2 0l.4.3a2 2 0 0 1 1 1.7v.2a2 2 0 0 0 2 2h.4a2 2 0 0 0 2-2v-.2a2 2 0 0 1 1-1.7l.4-.3a2 2 0 0 1 2 0l.2.1a2 2 0 0 0 2.7-.7l.2-.4a2 2 0 0 0-.7-2.7l-.2-.1a2 2 0 0 1-1-1.7v-.5a2 2 0 0 1 1-1.7l.2-.1a2 2 0 0 0 .7-2.7l-.2-.4a2 2 0 0 0-2.7-.7l-.2.1a2 2 0 0 1-2 0l-.4-.3a2 2 0 0 1-1-1.7v-.2a2 2 0 0 0-2-2Z" /><circle cx="12" cy="12" r="3" /></svg></button></div>';
+  // 반별 사용액 통계 카드: 예산 카드 아래 줄을 바꿔 한 줄 전체로 표시 (반별배부액보다 많이 쓴 반은 빨간 굵은 글씨)
+  box.insertAdjacentHTML('beforeend', stats.map((c, i) => { const st = c.stats; const T = (label, v, red, note) => '<div class="bg-white/70 border border-black/10 rounded-lg px-3 py-2 min-w-0"><div class="text-xs font-semibold text-slate-500">' + label + (note ? '<span class="font-normal text-slate-400 hidden sm:inline"> ' + note + '</span>' : '') + '</div><div class="text-right font-bold ' + (red ? 'text-red-600' : '') + '">' + fmt(v) + '</div></div>';
+    return '<div class="border border-slate-200 rounded-xl p-3 shadow-sm space-y-2" style="grid-column:1/-1;background:' + esc(c.color || cardColor(c.name) || CARD_PALETTE[(cards.length + i) % CARD_PALETTE.length]) + '">' +
+      '<div class="font-bold text-sm border-b border-black/10 pb-1">' + esc(c.name) + ' <span class="text-xs font-normal text-slate-500">반별 사용액 통계</span></div>' +
+      '<div class="grid grid-cols-2 sm:grid-cols-4 gap-2">' + T('총액', st.total) + T('학년공통사용액', st.common, false, st.commonManual ? '(직접 입력)' : '(자동)') + T('반별배부액', st.alloc, false, '(총액 − 학년공통) ÷ ' + st.classes.length + '학급') + T('잔액', st.remain, st.remain < 0) + '</div>' +
+      '<div class="grid grid-cols-3 sm:grid-cols-5 lg:grid-cols-10 gap-2">' + st.classes.map((k) => { const u = st.use[k] || 0, over = u > st.alloc; return '<div class="bg-white/70 border border-black/10 rounded-lg px-2 py-1.5 min-w-0"><div class="text-xs font-semibold text-slate-500 truncate">' + esc(k) + '</div><div class="text-right ' + (over ? 'text-red-600 font-extrabold' : 'font-medium') + '">' + fmt(u) + '</div></div>'; }).join('') + '</div></div>';
+  }).join(''));
+  $('cardAdmin').onclick = openAdminGate;
+}
+function renderFilters() {
+  const kind = kindOf(mode), f = $('filters');
+  const uniq = (k) => [...new Set(allRows(kind).map((r) => str(r[k]).trim()).filter(Boolean))].sort(natural);
+  f.style.display = kind.filters.length ? '' : 'none';
+  f.innerHTML = kind.filters.map(([label, k]) => '<select data-k="' + k + '" class="border rounded-lg px-3 py-1.5 bg-white text-sm"><option value="">' + label + ' 전체</option>' +
+    (k === 'supply_class' ? ['학년공통'].concat(classNames()) : (kind.custom && k === kind.F.name) ? [...new Set(budgetOpts().concat(uniq(k)))] : uniq(k)).map((v) => '<option ' + (filters[k] === v ? 'selected' : '') + ' value="' + esc(v) + '">' + esc(v) + '</option>').join('') + '</select>').join('');
+  f.querySelectorAll('select').forEach((s) => s.onchange = () => { filters[s.dataset.k] = s.value; renderGrid(); });
+}
+function renderTools() {
+  const kind = kindOf(mode), t = $('sheetTools'); t.style.display = kind.custom ? '' : 'none'; t.classList.toggle('hidden', !kind.custom); if (!kind.custom) return;
+  t.innerHTML = '<button id="tAddCol" class="px-3 py-1.5 rounded-lg text-sm font-semibold bg-white border border-slate-300 hover:bg-slate-50">+ 열 추가 · 순서</button>' +
+    '<button id="tRename" class="px-3 py-1.5 rounded-lg text-sm font-semibold bg-white border border-slate-300 hover:bg-slate-50">✏️ 예산명 변경</button>' +
+    (kind.custom.id === 'classfee' ? '' : '<button id="tDel" class="px-3 py-1.5 rounded-lg text-sm font-semibold bg-white border border-red-200 text-red-600 hover:bg-red-50">🗑 이 페이지 삭제</button>');   // 기본 페이지(학급운영비)는 삭제 불가
+  $('tAddCol').onclick = () => openAdd('cols');
+  $('tRename').onclick = async () => {
+    const v = (prompt('예산명을 입력하세요.', kind.custom.name) || '').trim(); if (!v || v === kind.custom.name) return;
+    const err = nameError(v, kind.custom.id); if (err) return alert(err);
+    kind.custom.name = v; await enqueue(saveSheets); renderTabs();
+  };
+  if ($('tDel')) $('tDel').onclick = async () => {
+    const s = kind.custom, n = allRows(kind).length;
+    if (!confirm('[' + s.name + '] 페이지를 삭제할까요?' + (n ? '\n입력된 ' + n + '줄도 함께 삭제됩니다.' : ''))) return;
+    const ids = allRows(kind).map((r) => r._id);
+    sheets = sheets.filter((x) => x.id !== s.id); data.sheetRows = data.sheetRows.filter((r) => r.sheet !== s.id);
+    await enqueue(async () => { await saveSheets(); await commit(ids.map((id) => ({ type: 'delete', col: SHEET_COL, id }))); });
+    setMode('budget');
+  };
+}
+const nextColId = (s) => { let n = 1; const used = new Set(s.cols.map((c) => c.id)); while (used.has('c' + n)) n++; return 'c' + n; };
+const shownSheets = () => sheets.filter((x) => x.id === 'classfee' || !num(x.year) || num(x.year) === curYear);   // 지금 학년도에 보이는 추가 페이지
+let sheetSeed = {};   // 기본 페이지·카드를 이미 만들었다는 표시(지운 뒤 다시 만들지 않도록 유지)
+const saveSheets = () => commit([{ type: 'set', col: 'app_config', id: 'budget_sheets', data: { json: JSON.stringify({ sheets, seed: sheetSeed }), updatedAt: new Date().toISOString() } }]);
+function nameError(v, exceptId) {
+  if (['학년 예산', '학습준비물', '학습준비물 1학기', '학습준비물 2학기', '예산 내역'].indexOf(v) >= 0 || shownSheets().some((s) => s.id !== exceptId && s.name === v)) return '같은 이름의 예산 페이지가 이미 있습니다.';
+  return '';
+}
+
+function cellHtml(kind, c, ci, r, listIds) {
+  if (c.t === 'calc') { const v = r ? c.calc(r) : 0; return '<td class="calc" data-calc="' + ci + '" data-v="' + v + '"' + (c.sum ? ' data-sum="1"' : '') + '>' + (r ? fmt(v) : '') + '</td>'; }
+  const raw = str(r ? r[c.k] : ''), D = ' data-ci="' + ci + '" data-k="' + esc(c.k) + '"';
+  if (c.t === 'sel') {
+    const base = c.opts(); const list = raw && base.indexOf(raw) < 0 ? base.concat([raw]) : base;
+    return '<td class="selc"><select class="cell sel"' + D + '><option value=""></option>' + list.map((o) => '<option value="' + esc(o) + '"' + (o === raw ? ' selected' : '') + '>' + esc(o) + '</option>').join('') + '</select></td>';
+  }
+  if (c.t === 'chk') return '<td class="chkc"><input type="checkbox" class="cell chk"' + D + (raw ? ' checked' : '') + ' aria-label="' + esc(c.label) + '"></td>';
+  if (c.t === 'sup' || (c.t === 'spec' && isFeeRow(kind.F, r))) {   // 눌러서 팝업으로 고르는 칸
+    const q = c.t === 'sup' && r ? supQty(r) : 0;
+    return '<td class="pickc"><input class="cell pick' + (c.t === 'sup' ? ' num' : '') + '" readonly' + D + ' data-raw="' + esc(raw) + '" value="' + esc(c.t === 'sup' ? (q ? fmt(q) : '') : raw) + '"' + (c.t === 'sup' ? ' title="' + esc(supText(r || {}) || '눌러서 학급별 수량 입력') + '"' : '') + ' placeholder="' + (c.t === 'sup' ? '반별 입력' : '눌러서 선택 (학급·+)') + '" autocomplete="off"></td>';
+  }
+  const shown = c.t === 'num' && raw !== '' ? fmt(num(raw)) : raw;
+  const files = c.attach && r && Array.isArray(r[filesKey(c)]) ? r[filesKey(c)] : [];
+  return '<td' + (c.t === 'link' ? ' class="linkc"' : c.attach ? ' class="attc"' : '') + '><input class="cell' + (c.t === 'num' ? ' num' : '') + '"' + D + ' value="' + esc(shown) + '"' + (c.t === 'num' ? ' inputmode="decimal"' : '') + (c.ro && c.ro(r) ? ' readonly tabindex="-1" title="규격에서 고른 학급 수로 자동 계산됩니다"' : '') + ' autocomplete="off">' +
+    (c.attach ? attBtn(ci, files.length) : '') + (c.t === 'link' && raw ? '<a href="' + esc(/^https?:/i.test(raw) ? raw : 'https://' + raw) + '" target="_blank" rel="noopener" tabindex="-1" title="링크 열기">↗</a>' : '') + '</td>';
+}
+const IMG_SVG = '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8.5" cy="8.5" r="1.6"/><path d="m21 15-4.5-4.5L6 21"/></svg>';
+const attBtn = (ci, n) => '<button class="attbtn' + (n ? ' has' : '') + '" data-att="' + ci + '" title="이미지·파일 첨부" tabindex="-1">' + IMG_SVG + (n ? '<b>' + n + '</b>' : '') + '</button>';
+const rtoolsHtml = () => '<div class="rtools"><i class="grip" draggable="true" title="끌어서 순서 변경">⠿</i><button data-color title="행 색깔">🎨</button><button data-del title="이 줄 삭제">✕</button></div>';
+function rowHtml(kind, r, idx, listIds) {
+  const col = rowBg(kind, r);   // 학년공통 준비물은 자동으로 노란색
+  return '<tr data-id="' + (r ? esc(r._id) : '') + '" class="' + (r ? '' : 'blank') + (col ? ' colored' : '') + '"' + (col ? ' style="--rc:' + esc(col) + '"' : '') + '><th class="rn"><span>' + (idx + 2) + '</span>' + (r ? rtoolsHtml() : '') + '</th>' +
+    kind.cols.map((c, ci) => cellHtml(kind, c, ci, r, listIds)).join('') + '</tr>';
+}
+function renderGrid() {
+  const kind = kindOf(mode), rows = viewRows(kind).slice().sort(byOrder); window.__rows = rows;
+  const listIds = {}; const dl = '';
+  const calcIdx = kind.cols.findIndex((c) => c.t === 'calc' && c.sum);
+  const head = '<tr class="letters"><th class="rn"></th>' + kind.cols.map((c, ci) => '<th class="dnd-handle" data-hd="' + ci + '" title="끌어서 열 위치 이동">' + COLN(ci) + '<span class="rsz" data-rsz="' + ci + '" title="끌어서 열 너비 조절"></span></th>').join('') + '</tr>' +
+    '<tr class="heads"><th class="rn">1</th>' + kind.cols.map((c, ci) => kind.custom
+      ? '<th data-hd="' + ci + '"><input class="hcell" data-h="' + ci + '" value="' + esc(c.label) + '">' + (kind.cols.length > 1 ? '<button class="colx" data-colx="' + ci + '" title="열 삭제">✕</button>' : '') + '</th>'
+      : '<th class="dnd-handle" data-hd="' + ci + '" title="끌어서 열 위치 이동">' + esc(c.label) + '</th>').join('') + '</tr>';
+  const sum = calcIdx >= 0 ? rows.reduce((a, r) => a + kind.cols[calcIdx].calc(r), 0) : 0;
+  const addRow = '<tr class="addrow"><td colspan="' + (kind.cols.length + 1) + '"><div class="addin"><button data-addrows style="min-width:5.25rem" class="h-9 px-4 rounded-full bg-white border border-slate-300 text-xl font-bold text-slate-600 hover:bg-indigo-50 leading-none" title="빈 줄 5개 더 추가">+</button></div></td></tr>';
+  const foot = calcIdx >= 0 ? '<tfoot><tr><th class="rn"></th>' + kind.cols.map((c, ci) => ci === 0 ? '<td colspan="' + calcIdx + '" style="text-align:right">합계</td>' : ci < calcIdx ? '' : ci === calcIdx ? '<td id="sumCell" style="text-align:right">' + fmt(sum) + '</td>' : '<td></td>').join('') + '</tr></tfoot>' : '';
+  $('gridWrap').innerHTML = dl + '<table class="sheet"><colgroup><col style="width:' + RN + 'px">' + kind.cols.map((c, ci) => '<col data-ci="' + ci + '">').join('') + '</colgroup>' +
+    '<thead>' + head + '</thead><tbody>' + rows.map((r, i) => rowHtml(kind, r, i, listIds)).join('') + Array.from({ length: blankN }, (_, j) => rowHtml(kind, null, rows.length + j, listIds)).join('') + addRow + '</tbody>' + foot + '</table>';
+  $('gridWrap')._listIds = listIds; layoutCols();
+}
+
+// ---- 열 너비: 데스크톱에서는 화면 폭에 딱 맞게(가로 스크롤 없음), 좁은 화면에서는 원래 폭으로 ----
+function layoutCols() {
+  const t = document.querySelector('#gridWrap table.sheet'); if (!t) return;
+  const kind = kindOf(mode), wrap = $('gridWrap'); const nat = kind.cols.reduce((a, c) => a + c.w, 0);
+  const fit = wrap.clientWidth >= 900; const avail = wrap.clientWidth - RN - 2; const scale = fit ? avail / nat : 1;
+  const cols = t.querySelectorAll('col[data-ci]');
+  kind.cols.forEach((c, i) => { cols[i].style.width = Math.max(44, Math.floor(c.w * scale)) + 'px'; });
+  t.style.width = fit ? '100%' : (RN + nat) + 'px';
+  document.querySelectorAll('#gridWrap .addin').forEach((d) => { d.style.width = Math.max(120, wrap.clientWidth - 2) + 'px'; });
+}
+window.addEventListener('resize', layoutCols);
+
+// ---- 합계·금액 칸을 입력하는 즉시 다시 계산 ----
+const rawOf = (inp) => (inp.classList.contains('pick') ? (inp.dataset.raw || '') : inp.type === 'checkbox' ? (inp.checked ? '완료' : '') : inp.value.replace(/,/g, ''));
+const sumOfCalc = () => [...document.querySelectorAll('#gridWrap td[data-calc][data-sum]')].reduce((a, td) => a + Number(td.dataset.v || 0), 0);
+function recalcRow(tr) {
+  const kind = kindOf(mode); const rec = Object.assign({}, tr.dataset.id ? findRow(kind, tr.dataset.id) : {});
+  tr.querySelectorAll('.cell').forEach((inp) => { if (!inp.classList.contains('pick') && inp.dataset.k) rec[inp.dataset.k] = rawOf(inp); });
+  tr.querySelectorAll('td[data-calc]').forEach((td) => { const v = kind.cols[+td.dataset.calc].calc(rec); td.dataset.v = v; td.textContent = fmt(v); });
+  const sc = $('sumCell'); if (sc) sc.textContent = fmt(sumOfCalc());
+}
+function renumber() { document.querySelectorAll('#gridWrap tbody tr').forEach((tr, i) => { const s = tr.querySelector('.rn span'); if (s) s.textContent = i + 2; }); }
+
+// ---- 맨 아래 빈 줄을 실제 줄(문서)로 만들기 ----
+function materializeRow(tr, kind, field, val) {
+  const doc = blankDoc(kind, presetFor(kind)); if (field) doc[field] = val; const id = GP.newId(kind.col);
+  srcArr(kind).push(Object.assign({ _id: id }, doc));
+  tr.dataset.id = id; tr.classList.remove('blank');
+  tr.querySelector('.rn').insertAdjacentHTML('beforeend', rtoolsHtml());
+  kind.cols.forEach((cc, ci) => { if (cc.k && cc.k !== field && doc[cc.k]) { const i2 = tr.querySelector('[data-ci="' + ci + '"]'); if (i2 && !i2.value && i2.type !== 'checkbox' && !i2.classList.contains('pick')) i2.value = doc[cc.k]; } });   // 걸러 보는 중이면 미리 채운 값 표시
+  if (!tr.nextElementSibling || tr.nextElementSibling.classList.contains('addrow')) tr.insertAdjacentHTML('afterend', rowHtml(kind, null, 0, $('gridWrap')._listIds));   // 맨 아래 줄을 채웠을 때만 새 빈 줄을 덧붙임
+  renumber();
+  enqueue(() => commit([{ type: 'set', col: kind.col, id, data: doc }]));
+  return id;
+}
+
+// ---- 한 칸 저장 ----
+function saveCell(inp) {
+  const kind = kindOf(mode), tr = inp.closest('tr'), c = kind.cols[+inp.dataset.ci]; if (!c || !c.k || inp.classList.contains('pick')) return;
+  const val = c.t === 'chk' ? (inp.checked ? '완료' : '') : storeVal(c, inp.value);
+  let id = tr.dataset.id;
+  if (!id) {   // 맨 아래 빈 줄 → 새 줄 만들기
+    if (!val) return;
+    id = materializeRow(tr, kind, c.k, val);
+  } else {
+    const row = findRow(kind, id); if (!row) return;
+    if (str(row[c.k]) === val) { reformat(inp, c); return; }
+    row[c.k] = val;
+    enqueue(() => commit([{ type: 'set', merge: true, col: kind.col, id, data: { [c.k]: val } }]));
+  }
+  reformat(inp, c); recalcRow(tr); inp._orig = inp.value;
+  if (c.t === 'link') linkIcon(inp, val);
+  if (kind.filters.length) renderFiltersKeep();
+  renderSupplyBox();
+  if (kind.F && c.k === kind.F.name) refreshRow(tr);   // 예산종류가 바뀌면(학년회비 등) 규격·수량 칸 모양이 달라질 수 있어 줄을 다시 그림
+}
+// 한 줄 다시 그리기 / 여러 칸을 한꺼번에 저장 (팝업에서 고른 값 등)
+function refreshRow(tr) {
+  const kind = kindOf(mode), row = tr.dataset.id ? findRow(kind, tr.dataset.id) : null; if (!row) return tr;
+  const idx = [...tr.parentNode.children].indexOf(tr); const t = document.createElement('tbody');
+  t.innerHTML = rowHtml(kind, row, idx, {}); const nt = t.firstElementChild; tr.replaceWith(nt); return nt;
+}
+function applyPatch(tr, patch) {
+  const kind = kindOf(mode); let id = tr.dataset.id; if (!id) id = materializeRow(tr, kind, null, '');
+  const row = findRow(kind, id); if (!row) return; Object.assign(row, patch);
+  enqueue(() => commit([{ type: 'set', merge: true, col: kind.col, id, data: patch }]));
+  refreshRow(document.querySelector('#gridWrap tr[data-id="' + CSS.escape(id) + '"]') || tr); renumber(); recalcAfterDelete(); renderSupplyBox();
+  if (kind.filters.length) renderFiltersKeep();
+}
+function reformat(inp, c) { if (c.t === 'num' && inp.value.trim() !== '') inp.value = fmt(num(inp.value)); }
+function linkIcon(inp, v) { const td = inp.closest('td'); const a = td.querySelector('a'); if (a) a.remove(); if (v) td.insertAdjacentHTML('beforeend', '<a href="' + esc(/^https?:/i.test(v) ? v : 'https://' + v) + '" target="_blank" rel="noopener" tabindex="-1" title="링크 열기">↗</a>'); }
+function renderFiltersKeep() { if (!document.activeElement || document.activeElement.tagName !== 'SELECT') renderFilters(); }
+
+// ---- 여러 칸 붙여넣기 ----
+function pasteGrid(inp, text) {
+  const kind = kindOf(mode), tr = inp.closest('tr'); const trs = [...document.querySelectorAll('#gridWrap tbody tr')];
+  let r0 = trs.indexOf(tr); const editable = kind.cols.map((c, i) => (c.k && c.t !== 'sup' ? i : -1)).filter((i) => i >= 0); let c0 = editable.indexOf(+inp.dataset.ci);
+  const lines = text.replace(/\r/g, '').split('\n'); if (lines.length && lines[lines.length - 1] === '') lines.pop();
+  const table = lines.map((l) => l.split('\t'));
+  const view = viewRows(kind).slice().sort(byOrder); const ops = []; const touched = new Set();
+  table.forEach((cells, dr) => {
+    let row = view[r0 + dr];
+    if (!row) { const doc = blankDoc(kind, presetFor(kind)); row = Object.assign({ _id: GP.newId(kind.col) }, doc); srcArr(kind).push(row); view.push(row); touched.add(row._id + '!new'); }
+    const patch = {};
+    cells.forEach((v, dc) => { const ci = editable[c0 + dc]; if (ci === undefined) return; const c = kind.cols[ci]; const sv = storeVal(c, v.replace(/^"|"$/g, '')); row[c.k] = sv; patch[c.k] = sv; });
+    if (touched.has(row._id + '!new')) { const full = Object.assign({}, row); delete full._id; ops.push({ type: 'set', col: kind.col, id: row._id, data: full }); }
+    else ops.push({ type: 'set', merge: true, col: kind.col, id: row._id, data: patch });
+  });
+  enqueue(() => commit(ops)); renderGrid(); renderFilters(); renderSupplyBox();
+}
+
+// ---- 이벤트 ----
+const gw = $('gridWrap');
+gw.addEventListener('focusin', (e) => { const inp = e.target; if (inp.matches && inp.matches('input.cell.num:not([readonly])')) { inp.value = inp.value.replace(/,/g, ''); } if (inp.matches && inp.matches('input.cell')) { inp._orig = inp.value; } });
+gw.addEventListener('input', (e) => { if (e.target.matches('input.cell:not(.pick)')) recalcRow(e.target.closest('tr')); });
+gw.addEventListener('change', (e) => {
+  const inp = e.target;
+  if (inp.matches('input.cell, select.cell')) saveCell(inp);
+  else if (inp.matches('input.hcell')) {
+    const kind = kindOf(mode), col = kind.custom.cols[+inp.dataset.h]; const v = inp.value.trim(); if (!v) { inp.value = col.name; return; }
+    col.name = v; enqueue(saveSheets); renderGrid();   // 열 이름에 따라 열 종류(드롭다운·체크박스·계산 등)가 달라짐
+  }
+});
+gw.addEventListener('focusout', (e) => { const inp = e.target; if (inp.matches && inp.matches('input.cell.num:not([readonly])')) { const c = kindOf(mode).cols[+inp.dataset.ci]; reformat(inp, c); } });
+gw.addEventListener('click', async (e) => {
+  if (e.target.closest('[data-addrows]')) { blankN += 5; renderGrid(); gw.scrollTop = gw.scrollHeight; return; }
+  const pk = e.target.closest('input.cell.pick'); if (pk) { openPick(pk); return; }
+  const att = e.target.closest('[data-att]');
+  if (att) { openAtt(att); return; }
+  const del = e.target.closest('[data-del]'), colx = e.target.closest('[data-colx]');
+  if (del) {
+    const tr = del.closest('tr'), kind = kindOf(mode), id = tr.dataset.id; if (!id) return;
+    if (!confirm('이 줄을 삭제할까요?')) return;
+    const arr = srcArr(kind), ix = arr.findIndex((r) => r._id === id); const gone = ix >= 0 ? arr.splice(ix, 1)[0] : null;
+    tr.remove(); renumber(); recalcAfterDelete(); renderSupplyBox(); enqueue(() => commit([{ type: 'delete', col: kind.col, id }])); renderFiltersKeep();
+    if (gone) kind.cols.filter((cc) => cc.attach).forEach((cc) => (gone[filesKey(cc)] || []).forEach(dropFile));
+  } else if (colx) {
+    const kind = kindOf(mode), col = kind.custom.cols[+colx.dataset.colx];
+    if (!confirm('[' + col.name + '] 열을 삭제할까요? 이 열에 입력한 내용은 화면에서 사라집니다.')) return;
+    kind.custom.cols = kind.custom.cols.filter((c) => c.id !== col.id); await enqueue(saveSheets); renderGrid();
+  }
+});
+function recalcAfterDelete() { const sc = $('sumCell'); if (sc) sc.textContent = fmt(sumOfCalc()); }
+gw.addEventListener('keydown', (e) => {
+  if (e.target.matches && e.target.matches('input.cell.pick') && (e.key === 'Enter' || e.key === ' ') && !e.isComposing) { e.preventDefault(); openPick(e.target); return; }
+  const inp = e.target; if (!inp.matches || !inp.matches('input.cell, input.hcell') || e.isComposing || e.keyCode === 229) return;
+  const move = (dr, dc) => {
+    const trs = [...gw.querySelectorAll('tbody tr')], tr = inp.closest('tr'); let r = trs.indexOf(tr) + dr;
+    const cells = [...tr.querySelectorAll('input.cell')]; const ci = cells.indexOf(inp);
+    if (inp.matches('input.hcell')) { if (dr > 0) { const f = trs[0] && trs[0].querySelector('input.cell'); if (f) f.focus(); } return; }
+    if (r < 0 || r >= trs.length) return; const tgt = [...trs[r].querySelectorAll('input.cell')][Math.max(0, Math.min(ci + dc, cells.length - 1))]; if (tgt) { tgt.focus(); tgt.select && tgt.select(); }
+  };
+  if (e.key === 'Enter') { e.preventDefault(); inp.blur(); setTimeout(() => move(e.shiftKey ? -1 : 1, 0), 0); }
+  else if (e.key === 'ArrowDown') { e.preventDefault(); move(1, 0); }
+  else if (e.key === 'ArrowUp') { e.preventDefault(); move(-1, 0); }
+  else if (e.key === 'ArrowRight' && inp.selectionStart === inp.value.length && inp.selectionEnd === inp.value.length) { e.preventDefault(); move(0, 1); }
+  else if (e.key === 'ArrowLeft' && inp.selectionStart === 0 && inp.selectionEnd === 0) { e.preventDefault(); move(0, -1); }
+  else if (e.key === 'Escape' && inp.matches('input.cell:not(.pick):not(.chk)')) { inp.value = inp._orig !== undefined ? inp._orig : inp.value; recalcRow(inp.closest('tr')); inp.blur(); }
+});
+gw.addEventListener('paste', (e) => {
+  const inp = e.target; if (!inp.matches || !inp.matches('.cell:not(.pick)')) return;   // 드롭다운·체크박스 칸에서도 붙여넣기 시작 가능
+  const text = (e.clipboardData || window.clipboardData).getData('text'); if (!/[\t\n]/.test(text.replace(/\n$/, ''))) return;
+  e.preventDefault(); pasteGrid(inp, text);
+});
+
+// ======================= 줄 끌어서 순서 바꾸기 / 줄 색깔 / 열 너비 =======================
+let dragId = null, dropInfo = null;
+const clearDropMarks = () => document.querySelectorAll('#gridWrap tr.drop-before, #gridWrap tr.drop-after').forEach((t) => t.classList.remove('drop-before', 'drop-after'));
+function moveRow(id, targetId, after) {
+  const kind = kindOf(mode); const list = allRows(kind).slice().sort(byOrder);
+  const from = list.findIndex((r) => r._id === id); if (from < 0 || id === targetId) return;
+  const row = list.splice(from, 1)[0];
+  let idx = list.length;
+  if (targetId) { const t = list.findIndex((r) => r._id === targetId); if (t >= 0) idx = after ? t + 1 : t; }
+  list.splice(idx, 0, row);
+  const prev = list[idx - 1], next = list[idx + 1]; const ops = [];
+  let cand = null;
+  if (prev && next) { const m = (ord(prev) + ord(next)) / 2; if (m > ord(prev) && m < ord(next)) cand = m; }
+  else if (prev) cand = ord(prev) + 1000; else if (next) cand = ord(next) - 1000; else return;
+  if (cand !== null) { if (row.row_order === cand) return; row.row_order = cand; ops.push({ type: 'set', merge: true, col: kind.col, id: row._id, data: { row_order: cand } }); }
+  else list.forEach((r, i) => { const o = (i + 1) * 1000; if (ord(r) !== o || typeof r.row_order !== 'number') { r.row_order = o; ops.push({ type: 'set', merge: true, col: kind.col, id: r._id, data: { row_order: o } }); } });   // 순서값이 겹치면 처음부터 다시 매김
+  enqueue(() => commit(ops)); renderGrid();
+}
+gw.addEventListener('dragstart', (e) => {
+  const g = e.target.closest && e.target.closest('.grip'); if (!g) return;
+  const tr = g.closest('tr'); dragId = tr.dataset.id; dropInfo = null;
+  e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', dragId); try { e.dataTransfer.setDragImage(tr, 24, 16); } catch (x) { /* 무시 */ }
+  setTimeout(() => tr.classList.add('dragging'), 0);
+});
+gw.addEventListener('dragover', (e) => {
+  if (!dragId) return; const tr = e.target.closest && e.target.closest('tbody tr'); if (!tr) return;
+  e.preventDefault(); clearDropMarks(); if (tr.dataset.id === dragId) { dropInfo = null; return; }
+  const r = tr.getBoundingClientRect(); const blank = tr.classList.contains('blank'); const after = !blank && e.clientY > r.top + r.height / 2;
+  tr.classList.add(after ? 'drop-after' : 'drop-before'); dropInfo = { target: blank ? null : tr.dataset.id, after };
+});
+gw.addEventListener('drop', (e) => { if (!dragId) return; e.preventDefault(); const id = dragId, info = dropInfo; dragId = null; dropInfo = null; clearDropMarks(); if (info) moveRow(id, info.target, info.after); });
+// ---- 터치(모바일)로 줄 이동: 왼쪽 ⠿ 를 누른 채 위아래로 끌기 ----
+let tdrag = null;
+gw.addEventListener('touchstart', (e) => {
+  const g = e.target.closest && e.target.closest('.grip'); if (!g) return; const tr = g.closest('tr'); if (!tr || !tr.dataset.id) return;
+  const t = e.touches[0]; tdrag = { id: tr.dataset.id, info: null, x: t.clientX, y: t.clientY, timer: null }; tr.classList.add('dragging');
+  tdrag.timer = setInterval(() => {   // 손가락이 위·아래 가장자리에 있으면 표를 스크롤
+    if (!tdrag) return; const r = gw.getBoundingClientRect();
+    if (tdrag.y < r.top + 50) gw.scrollTop -= 14; else if (tdrag.y > r.bottom - 50) gw.scrollTop += 14; else return; touchMark();
+  }, 30);
+}, { passive: true });
+function touchMark() {
+  if (!tdrag) return; clearDropMarks();
+  const el = document.elementFromPoint(tdrag.x, tdrag.y); const tr = el && el.closest ? el.closest('#gridWrap tbody tr') : null;
+  if (!tr || tr.dataset.id === tdrag.id) { tdrag.info = null; return; }
+  const r = tr.getBoundingClientRect(); const blank = tr.classList.contains('blank'); const after = !blank && tdrag.y > r.top + r.height / 2;
+  tr.classList.add(after ? 'drop-after' : 'drop-before'); tdrag.info = { target: blank ? null : tr.dataset.id, after };
+}
+gw.addEventListener('touchmove', (e) => { if (!tdrag) return; const t = e.touches[0]; tdrag.x = t.clientX; tdrag.y = t.clientY; touchMark(); }, { passive: true });
+const endTouch = (cancel) => { if (!tdrag) return; const d = tdrag; tdrag = null; clearInterval(d.timer); clearDropMarks(); document.querySelectorAll('#gridWrap tr.dragging').forEach((t) => t.classList.remove('dragging')); if (!cancel && d.info) moveRow(d.id, d.info.target, d.info.after); };
+gw.addEventListener('touchend', () => endTouch(false)); gw.addEventListener('touchcancel', () => endTouch(true));
+gw.addEventListener('dragend', () => { dragId = null; dropInfo = null; clearDropMarks(); document.querySelectorAll('#gridWrap tr.dragging').forEach((t) => t.classList.remove('dragging')); });
+
+const PALETTE = [['#fee2e2', '빨강'], ['#ffedd5', '주황'], ['#fef9c3', '노랑'], ['#dcfce7', '초록'], ['#dbeafe', '파랑'], ['#ede9fe', '보라'], ['#fce7f3', '분홍'], ['#e5e7eb', '회색']];
+let colorFor = null;
+function openColor(btn) {
+  const tr = btn.closest('tr'); colorFor = tr.dataset.id; const pop = $('colorPop'); const r = btn.getBoundingClientRect();
+  pop.innerHTML = PALETTE.map(([c, n]) => '<button class="sw" data-c="' + c + '" title="' + n + '" style="background:' + c + '"></button>').join('') + '<button class="none" data-c="">색 없음</button>';
+  pop.style.display = 'flex'; pop.style.left = Math.min(r.left, window.innerWidth - 190) + 'px'; pop.style.top = (r.bottom + 4) + 'px';
+}
+function setRowColor(id, color) {
+  const kind = kindOf(mode), row = findRow(kind, id); if (!row) return;
+  row.row_color = color; const tr = document.querySelector('#gridWrap tr[data-id="' + CSS.escape(id) + '"]');
+  if (tr) { tr.classList.toggle('colored', !!color); if (color) tr.style.setProperty('--rc', color); else tr.style.removeProperty('--rc'); }
+  enqueue(() => commit([{ type: 'set', merge: true, col: kind.col, id, data: { row_color: color } }]));
+}
+$('colorPop').addEventListener('click', (e) => { const b = e.target.closest('[data-c]'); if (!b) return; if (colorFor) setRowColor(colorFor, b.dataset.c); $('colorPop').style.display = 'none'; colorFor = null; });
+document.addEventListener('mousedown', (e) => { if (!e.target.closest('#colorPop') && !e.target.closest('[data-color]')) $('colorPop').style.display = 'none'; });
+gw.addEventListener('click', (e) => { const b = e.target.closest('[data-color]'); if (b) openColor(b); });
+gw.addEventListener('scroll', () => { $('colorPop').style.display = 'none'; });
+
+// ---- 머리글(A,B,C… 줄 또는 열 이름 줄)을 끌어서 열 위치 바꾸기 (마우스·터치) ----
+DnD.bind(gw, { handle: 'th[data-hd].dnd-handle', item: 'th[data-hd]', drop: 'th[data-hd]', axis: 'x', ignore: '.rsz,input,select,textarea,button,a,label', onDrop: async (el, tgt, after) => {
+  const kind = kindOf(mode), n = kind.cols.length; const from = +el.dataset.hd; let dest = +tgt.dataset.hd + (after ? 1 : 0);
+  const idx = [...Array(n).keys()]; const [m] = idx.splice(from, 1); if (from < dest) dest--; idx.splice(dest, 0, m); if (idx.every((v, i) => v === i)) return;
+  if (kind.custom) { const cs = kind.custom.cols; kind.custom.cols = idx.map((i) => cs[i]); await enqueue(saveSheets); }
+  else { const keys = idx.map((i) => kind.cols[i].k || kind.cols[i].id || 'calc'); colWidths = Object.assign({}, colWidths, { __order: Object.assign({}, colWidths.__order, { [kind.id]: keys }) });
+    enqueue(() => commit([{ type: 'set', col: 'app_config', id: 'budget_cols', data: { json: JSON.stringify(colWidths), updatedAt: new Date().toISOString() } }])); }
+  renderGrid();
+} });
+let rsz = null;
+gw.addEventListener('mousedown', (e) => {
+  const h = e.target.closest && e.target.closest('[data-rsz]'); if (!h) return; e.preventDefault();
+  const ci = +h.dataset.rsz, cols = [...document.querySelectorAll('#gridWrap col[data-ci]')]; const j = ci < cols.length - 1 ? ci + 1 : ci - 1; if (j < 0) return;
+  rsz = { ci, j, x: e.clientX, cols, pxs: cols.map((c) => parseFloat(c.style.width)) }; h.classList.add('on'); document.body.classList.add('resizing');
+});
+document.addEventListener('mousemove', (e) => {
+  if (!rsz) return; const MIN = 44; let dx = e.clientX - rsz.x;
+  dx = Math.max(MIN - rsz.pxs[rsz.ci], Math.min(dx, rsz.pxs[rsz.j] - MIN));   // 옆 열과 폭을 주고받아 전체 너비는 그대로
+  rsz.cols[rsz.ci].style.width = (rsz.pxs[rsz.ci] + dx) + 'px'; rsz.cols[rsz.j].style.width = (rsz.pxs[rsz.j] - dx) + 'px';
+});
+document.addEventListener('mouseup', () => {
+  if (!rsz) return; const r = rsz; rsz = null; document.body.classList.remove('resizing'); document.querySelectorAll('.rsz.on').forEach((x) => x.classList.remove('on'));
+  const kind = kindOf(mode), saved = {}; kind.cols.forEach((c, i) => { saved[c.k || c.id || 'calc'] = Math.round(parseFloat(r.cols[i].style.width)); });
+  colWidths = Object.assign({}, colWidths, { [kind.id]: saved }); layoutCols();
+  enqueue(() => commit([{ type: 'set', col: 'app_config', id: 'budget_cols', data: { json: JSON.stringify(colWidths), updatedAt: new Date().toISOString() } }]));
+});
+
+// ======================= 비고 첨부 (이미지·파일) =======================
+// 첨부는 Firebase Storage 대신 Firestore(data_files)에 저장합니다. 사진은 약 300KB로 줄이고, 그 밖의 파일은 700KB까지만 올릴 수 있습니다.
+const MAX_FILE = 700 * 1024;
+const fileCache = {};   // fid -> data URL
+let attCtx = null;
+const fsize = (n) => (n > 1048576 ? (n / 1048576).toFixed(1) + 'MB' : Math.max(1, Math.round(n / 1024)) + 'KB');
+function dropFile(f) {
+  try {
+    if (f && f.fid) { delete fileCache[f.fid]; GP.db.collection('data_files').doc(f.fid).delete().catch(() => {}); }
+    else if (GP.storage && f && f.path) GP.storage.ref(f.path).delete().catch(() => {});
+  } catch (e) { /* 무시 */ }
+}
+const fileUrl = (f) => f.url || fileCache[f.fid] || '';
+function loadFileUrls(files) {
+  const need = files.filter((f) => f.fid && !fileCache[f.fid]); if (!need.length) return;
+  Promise.all(need.map((f) => GP.db.collection('data_files').doc(f.fid).get().then((d) => { if (d.exists) fileCache[f.fid] = d.data().dataUrl; }).catch(() => {}))).then(() => { if (attCtx) renderAtt(true); });
+}
+function openFile(f) {   // data URL은 새 탭으로 바로 열 수 없어 blob 주소로 바꿔 엽니다.
+  const u = fileUrl(f); if (!u) return;
+  if (!/^data:/.test(u)) { window.open(u, '_blank', 'noopener'); return; }
+  const m = u.match(/^data:([^;,]*);base64,(.*)$/); if (!m) return;
+  const bin = atob(m[2]); const arr = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+  const url = URL.createObjectURL(new Blob([arr], { type: m[1] || 'application/octet-stream' }));
+  if (/^(image\/|application\/pdf)/.test(m[1])) window.open(url, '_blank'); else { const a = document.createElement('a'); a.href = url; a.download = f.name; a.click(); }
+  setTimeout(() => URL.revokeObjectURL(url), 60000);
+}
+function openAtt(btn) {
+  const kind = kindOf(mode), tr = btn.closest('tr'), c = kind.cols[+btn.dataset.att];
+  const id = tr.dataset.id || materializeRow(tr, kind, null, '');   // 빈 줄에서 눌러도 줄을 먼저 만들어 둠
+  attCtx = { kind, id, c, tr }; renderAtt(); $('attMsg').textContent = '';
+  $('attModal').classList.remove('hidden'); $('attModal').classList.add('flex');
+}
+function curFiles() { const row = findRow(attCtx.kind, attCtx.id); return row && Array.isArray(row[filesKey(attCtx.c)]) ? row[filesKey(attCtx.c)] : []; }
+function renderAtt(fromLoad) {
+  const row = findRow(attCtx.kind, attCtx.id) || {}; const files = curFiles(); if (!fromLoad) loadFileUrls(files);
+  $('attTitle').textContent = str(row[kindOf(mode).cols.find((x) => x.k && x.k !== attCtx.c.k && !x.t)?.k]) ? '– ' + str(row[kindOf(mode).cols.find((x) => x.k && x.k !== attCtx.c.k && !x.t).k]) : '';
+  $('attList').innerHTML = files.length ? files.map((f, i) => '<div class="flex items-center gap-3 border rounded-lg p-2">' +
+    (/^image\//.test(f.type || '') ? '<a href="#" data-fopen="' + i + '"><img src="' + esc(fileUrl(f)) + '" alt="" class="w-16 h-16 object-cover rounded border bg-slate-100"></a>' : '<span class="text-2xl">📄</span>') +
+    '<div class="flex-1 min-w-0"><a href="#" data-fopen="' + i + '" class="block truncate text-sm font-semibold text-blue-700 underline">' + esc(f.name) + '</a><span class="text-xs text-slate-400">' + fsize(f.size || 0) + '</span></div>' +
+    '<button data-fdel="' + i + '" class="text-slate-400 hover:text-red-600" title="삭제">✕</button></div>').join('') : '<p class="text-sm text-slate-400 text-center py-3">첨부된 파일이 없습니다.</p>';
+  $('attList').querySelectorAll('[data-fopen]').forEach((a) => a.onclick = (ev) => { ev.preventDefault(); const f = curFiles()[+a.dataset.fopen]; if (f) openFile(f); });
+  $('attList').querySelectorAll('[data-fdel]').forEach((b) => b.onclick = () => {
+    const list = curFiles().slice(); const f = list[+b.dataset.fdel]; if (!f || !confirm('[' + f.name + '] 첨부를 삭제할까요?')) return;
+    list.splice(+b.dataset.fdel, 1); saveFiles(list); dropFile(f);
+  });
+}
+function saveFiles(list) {
+  const row = findRow(attCtx.kind, attCtx.id); if (!row) return; const key = filesKey(attCtx.c); row[key] = list;
+  enqueue(() => commit([{ type: 'set', merge: true, col: attCtx.kind.col, id: attCtx.id, data: { [key]: list } }]));
+  renderAtt(); const td = attCtx.tr.querySelectorAll('td')[attCtx.kind.cols.indexOf(attCtx.c)]; const b = td && td.querySelector('.attbtn'); if (b) b.outerHTML = attBtn(attCtx.kind.cols.indexOf(attCtx.c), list.length);
+}
+const blobToDataUrl = (blob) => new Promise((res, rej) => { const fr = new FileReader(); fr.onload = () => res(fr.result); fr.onerror = () => rej(fr.error || new Error('파일을 읽지 못했습니다.')); fr.readAsDataURL(blob); });
+function shrinkImage(file) {   // 약 300KB 이하가 되도록 크기·품질을 단계적으로 낮춤
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file); const img = new Image();
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('이미지를 읽지 못했습니다.')); };
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      const TARGET = 300 * 1024, steps = [[1600, 0.8], [1600, 0.7], [1400, 0.7], [1280, 0.65], [1100, 0.6], [900, 0.55]]; let best = null, k = 0;
+      const next = () => {
+        if (k >= steps.length) return best ? resolve(best) : reject(new Error('이미지를 줄이지 못했습니다.'));
+        const [MAX, q] = steps[k++]; let w = img.width, h = img.height; if (w > MAX) { h = Math.round(h * MAX / w); w = MAX; }
+        const cv = document.createElement('canvas'); cv.width = w; cv.height = h; const cx = cv.getContext('2d'); cx.fillStyle = '#fff'; cx.fillRect(0, 0, w, h); cx.drawImage(img, 0, 0, w, h);
+        cv.toBlob((bl) => { if (!bl) return reject(new Error('이미지를 줄이지 못했습니다.')); if (!best || bl.size < best.size) best = bl; if (bl.size <= TARGET) k = steps.length; next(); }, 'image/jpeg', q);
+      };
+      next();
+    };
+    img.src = url;
+  });
+}
+$('attFile').onchange = async (e) => {
+  const picked = [...e.target.files]; e.target.value = ''; if (!picked.length || !attCtx) return;
+  const ctx = attCtx; const added = []; let n = 0;
+  for (const file of picked) {
+    n++; $('attMsg').textContent = '올리는 중... (' + n + '/' + picked.length + ') ' + file.name;
+    try {
+      let blob = file, type = file.type || '', name = file.name;
+      if (/^image\/(jpeg|png|webp|bmp)/.test(type)) { blob = await shrinkImage(file); type = 'image/jpeg'; name = name.replace(/\.[^.]+$/, '') + '.jpg'; }
+      if (blob.size > MAX_FILE) { $('attMsg').textContent = '[' + file.name + '] ' + fsize(blob.size) + ' — 700KB를 넘어 올리지 못했습니다. (사진은 자동으로 줄입니다. 문서 파일은 700KB 이하만 가능합니다.)'; continue; }
+      const dataUrl = await blobToDataUrl(blob);
+      const ref = GP.db.collection('data_files').doc();
+      await ref.set({ name, type, size: blob.size, dataUrl, createdAt: new Date().toISOString() });
+      fileCache[ref.id] = dataUrl; added.push({ name, fid: ref.id, type, size: blob.size });
+    } catch (err) { console.error(err); $('attMsg').textContent = '[' + file.name + '] 올리지 못했습니다: ' + (err && err.message || err); }
+  }
+  if (added.length && attCtx === ctx) { saveFiles(curFiles().concat(added)); $('attMsg').textContent = added.length + '개를 첨부했습니다.'; }
+};
+$('attClose').onclick = () => { $('attModal').classList.add('hidden'); $('attModal').classList.remove('flex'); attCtx = null; };
+$('attModal').addEventListener('keydown', (e) => { if (e.key === 'Escape') $('attClose').click(); });
+
+// ======================= 학급·수량 선택 팝업 =======================
+let pickCtx = null;
+function openPick(inp) {
+  const kind = kindOf(mode), tr = inp.closest('tr'), c = kind.cols[+inp.dataset.ci], row = tr.dataset.id ? findRow(kind, tr.dataset.id) : null;
+  const cls = classNames(), box = $('pickBody'); pickCtx = { tr, kind, c };
+  const NUM = (q, v) => '<input type="number" min="0" inputmode="numeric" data-q="' + esc(q) + '" value="' + (v || '') + '" class="w-20 border rounded px-2 py-1 text-right" placeholder="0">';
+  if (c.t === 'sup') {
+    const cur = {}; parseSup(row || {}).forEach((x) => { cur[x.c] = x.n; });
+    $('pickTitle').style.display = ''; $('pickTitle').textContent = '학급별 수량';
+    const line = (x, extra) => '<div class="flex items-center justify-between gap-2 border rounded-lg px-3 py-1.5 text-sm' + (extra || '') + '"><label class="flex items-center gap-2 font-semibold"><input type="checkbox" data-sc="' + esc(x) + '"' + (cur[x] ? ' checked' : '') + ' class="w-4 h-4 accent-indigo-600">' + esc(x) + '</label>' +
+      '<input type="number" min="1" inputmode="numeric" data-q="' + esc(x) + '" value="' + (cur[x] || '') + '"' + (cur[x] ? '' : ' disabled') + ' class="w-20 border rounded px-2 py-1 text-right" placeholder="수량"></div>';
+    box.innerHTML = '<p class="text-xs text-slate-500">수량을 넣을 학급에 체크하고 수량을 입력하세요. 체크한 학급의 수량을 모두 더해 금액(합)을 계산합니다.</p><div class="grid grid-cols-2 gap-2">' +
+      cls.map((x) => line(x)).join('') + '</div>' + line('학년공통', ' bg-slate-50');
+    box.querySelectorAll('[data-sc]').forEach((cb) => { cb.onchange = () => { const q = box.querySelector('[data-q="' + CSS.escape(cb.dataset.sc) + '"]'); q.disabled = !cb.checked; if (cb.checked) { if (!q.value) q.value = '1'; q.focus(); q.select(); } else q.value = ''; }; });
+  } else {
+    const cur = splitList(row && row[kind.F.spec]);
+    $('pickTitle').style.display = 'none';
+    box.innerHTML = '<div class="border rounded-xl p-3 space-y-2"><div class="flex items-center justify-between"><span class="font-bold text-sm">입금체크</span><div class="flex gap-2 text-xs"><button type="button" id="pkAll" class="px-2 py-1 rounded bg-slate-100">전체 선택</button><button type="button" id="pkNone" class="px-2 py-1 rounded bg-slate-100">전체 해제</button></div></div>' +
+      '<div class="grid grid-cols-3 gap-2">' + cls.map((x) => '<label class="flex items-center gap-2 border rounded-lg px-3 py-1.5 text-sm"><input type="checkbox" data-c="' + esc(x) + '"' + (cur.indexOf(x) >= 0 ? ' checked' : '') + ' class="w-4 h-4 accent-indigo-600"><span class="font-semibold">' + esc(x) + '</span></label>').join('') + '</div>' +
+      '<p class="text-xs text-slate-500">입금한 학급을 체크하면 체크한 수가 수량이 되어 단가와 곱해집니다. 이 금액은 사용액이 아니라 예산 카드의 배정액에 더해집니다.</p></div>' +
+      '<label class="block text-sm font-semibold">직접 입력 <span class="font-normal text-slate-400 text-xs">(선택)</span><input id="pkFree" class="mt-1 w-full border rounded-lg px-3 py-2 text-sm font-normal" placeholder="자유롭게 적을 수 있어요" value="' + esc(cur.filter((t) => t !== '+' && classNames().indexOf(t) < 0).join(', ')) + '"></label>';
+    $('pkAll').onclick = () => box.querySelectorAll('[data-c]').forEach((i) => { i.checked = true; });
+    $('pkNone').onclick = () => box.querySelectorAll('[data-c]').forEach((i) => { i.checked = false; });
+  }
+  $('pickModal').classList.remove('hidden'); $('pickModal').classList.add('flex');
+}
+function closePick() { $('pickModal').classList.add('hidden'); $('pickModal').classList.remove('flex'); pickCtx = null; }
+$('pickNo').onclick = closePick;
+$('pickOk').onclick = () => {
+  if (!pickCtx) return; const { tr, kind, c } = pickCtx; const box = $('pickBody'); let patch;
+  if (c.t === 'sup') {
+    const toks = [], nums = []; box.querySelectorAll('[data-q]').forEach((i) => { const n = Math.floor(Number(i.value)); if (!i.disabled && n > 0) { toks.push(i.dataset.q); nums.push(n); } });
+    patch = { supply_class: toks.join(', '), supply_class_num: nums.join(', ') };
+  } else {
+    const picked = [...box.querySelectorAll('[data-c]')].filter((i) => i.checked).map((i) => i.dataset.c);
+    const toks = picked.slice(); const free = ($('pkFree').value || '').split(',').map((x) => x.trim()).filter(Boolean); free.forEach((f) => { if (toks.indexOf(f) < 0) toks.push(f); });
+    patch = { [kind.F.spec]: toks.join(', ') }; if (picked.length && kind.F.num) patch[kind.F.num] = String(picked.length);   // 체크한 만큼 수량에 반영
+  }
+  closePick(); applyPatch(tr, patch);
+};
+$('pickModal').addEventListener('keydown', (e) => { if (e.key === 'Escape') closePick(); });
+
+// ======================= 학습준비물 상단: 총액·학년공통사용액·반별배부액·학급별 사용액 =======================
+function supplyStats(kind) {
+  const rows = allRows(kind), cls = classNames(), use = {}; let common = 0; cls.forEach((c) => { use[c] = 0; });
+  rows.forEach((r) => { const p = num(r.supply_price); parseSup(r).forEach((x) => { if (x.c === '학년공통') common += p * x.n; else if (x.c in use) use[x.c] += p * x.n; }); });
+  const total = num(supplyTotals[curYear + '_' + kind.sem]), n = cls.length, alloc = n ? Math.round((total - common) / n) : 0;
+  const spent = rows.reduce((a, r) => a + num(r.supply_price) * supQty(r), 0);   // 아래 표의 금액(합) 전부
+  return { total, common, alloc, use, cls, spent, remain: total - spent };
+}
+function renderSupplyBox() {
+  const box = $('supplyBox'), kind = kindOf(mode);
+  if (!kind.sem) { box.classList.add('hidden'); box.dataset.m = ''; return; }
+  box.classList.remove('hidden');
+  const CARD = 'bg-white border border-slate-200 rounded-xl p-2 sm:p-3 shadow-sm min-w-0';
+  if (box.dataset.m !== mode) {
+    box.dataset.m = mode;
+    box.innerHTML = '<div class="inline-flex rounded-full bg-slate-100 p-1 text-sm font-bold">' + [1, 2].map((n) => '<button type="button" data-sem="' + n + '" class="px-4 py-1 rounded-full ' + (kind.sem === n ? 'bg-white text-indigo-700 shadow' : 'text-slate-500') + '">' + n + '학기</button>').join('') + '</div>' +
+      '<div class="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">' +
+      '<label class="block ' + CARD + '"><span class="text-xs font-semibold text-slate-500">학습준비물 총액<span class="font-normal text-slate-400 hidden sm:inline"> (직접 입력)</span></span><input id="supTotal" inputmode="numeric" class="mt-1 w-full border rounded-lg px-2 sm:px-3 py-1.5 sm:py-2 text-right font-bold text-sm sm:text-lg" placeholder="0"></label>' +
+      '<div class="' + CARD + '"><div class="text-xs font-semibold text-slate-500">학년공통사용액</div><div id="supCommon" class="mt-2 text-right font-bold text-sm sm:text-lg"></div></div>' +
+      '<div class="' + CARD + '"><div class="text-xs font-semibold text-slate-500">반별배부액<span class="font-normal text-slate-400 hidden sm:inline"> (총액 − 학년공통) ÷ 학급수</span></div><div id="supAlloc" class="mt-2 text-right font-bold text-sm sm:text-lg"></div></div>' +
+      '<div class="' + CARD + '"><div class="text-xs font-semibold text-slate-500">잔액<span class="font-normal text-slate-400 hidden sm:inline"> (총액 − 표의 금액 합계)</span></div><div id="supRemain" class="mt-2 text-right font-bold text-sm sm:text-lg"></div></div></div>' +
+      '<div id="supClasses" class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-2"></div>' +
+      '<p class="text-xs text-slate-400">학급별 사용액은 표의 수량 칸(학급별 수량)으로 계산합니다. 반별배부액보다 1,000원 이상 많으면 빨간 글씨, 정확히 같으면 회색 배경으로 보입니다.</p>';
+    box.querySelectorAll('[data-sem]').forEach((b) => b.onclick = () => setMode('supply' + b.dataset.sem));
+    const t = $('supTotal');
+    t.onfocus = () => { t.value = t.value.replace(/,/g, ''); setTimeout(() => { try { t.select(); } catch (e) { /* 무시 */ } }, 0); };
+    t.onchange = () => { const v = num(t.value.replace(/,/g, '')); supplyTotals[curYear + '_' + kindOf(mode).sem] = v; t.value = v ? fmt(v) : '';
+      enqueue(() => commit([{ type: 'set', col: 'app_config', id: 'supply_totals', data: { json: JSON.stringify(supplyTotals), updatedAt: new Date().toISOString() } }])); renderSupplyBox(); };
+  }
+  const st = supplyStats(kind), t = $('supTotal'); if (document.activeElement !== t) t.value = st.total ? fmt(st.total) : '';
+  $('supCommon').textContent = fmt(st.common); $('supAlloc').textContent = fmt(st.alloc); const rm = $('supRemain'); rm.textContent = fmt(st.remain); rm.style.color = st.remain < 0 ? '#dc2626' : '';
+  $('supClasses').innerHTML = st.cls.map((c) => { const u = st.use[c], over = u - st.alloc >= 1000, same = u === st.alloc && st.alloc > 0;
+    return '<div class="border border-slate-200 rounded-lg px-3 py-2 ' + (same ? '' : 'bg-white') + '" style="' + (same ? 'background:#e5e7eb' : '') + '"><div class="text-xs font-semibold text-slate-500">' + esc(c) + '</div><div class="text-right font-bold ' + (over ? 'text-red-600' : '') + '">' + fmt(u) + '</div></div>'; }).join('');
+}
+
+// ======================= 관리자 페이지로 가기 (비밀번호 확인) =======================
+function openAdminGate() {
+  const wrap = document.createElement('div'); wrap.className = 'fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50';
+  wrap.innerHTML = '<div class="bg-white rounded-2xl shadow-xl w-full max-w-xs p-5 space-y-3"><h3 class="font-bold text-lg">관리자 확인</h3><p class="text-sm text-slate-500">관리자 비밀번호를 입력하세요.</p>' +
+    '<input id="gPw" type="password" autocomplete="off" class="w-full border rounded-lg px-3 py-2 text-sm" placeholder="비밀번호"><p id="gErr" class="text-sm font-semibold text-red-600 hidden">비밀번호가 일치하지 않습니다.</p>' +
+    '<div class="flex justify-end gap-2"><button id="gNo" class="px-4 py-2 rounded-lg bg-slate-100 text-sm font-semibold">취소</button><button id="gOk" class="px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-semibold">확인</button></div></div>';
+  document.body.appendChild(wrap);
+  const go = async () => {
+    const r = await GP.login('admin', wrap.querySelector('#gPw').value); wrap.querySelector('#gPw').value = '';
+    if (!r.success) { const ge = wrap.querySelector('#gErr'); ge.textContent = r.message || '비밀번호가 일치하지 않습니다.'; ge.classList.remove('hidden'); return; }
+    try { sessionStorage.setItem('gp_admin_open', 'budget'); sessionStorage.setItem('gp_admin_budget_page', mode); } catch (e) { /* 무시 */ }
+    wrap.remove();
+    try { if (parent !== window) { parent.__gpKeepAuth = 'admin'; parent.location.hash = '#/admin'; return; } } catch (e) { /* 아래로 */ }
+    location.href = 'admin.html';
+  };
+  wrap.querySelector('#gNo').onclick = () => wrap.remove(); wrap.querySelector('#gOk').onclick = go;
+  wrap.onkeydown = (e) => { if (e.key === 'Enter') go(); else if (e.key === 'Escape') wrap.remove(); };
+  wrap.querySelector('#gPw').focus();
+}
+
+// ======================= 예산 페이지 추가 =======================
+//  기본 열: 예산종류, 품명, 규격, 수량, 단가, 금액(합), 링크, 비고 / 그 밖의 열은 저장해 둔 열 이름(list_budget_header)에서 고르거나 새로 만듭니다.
+const DEFAULT_HEADS = ['예산종류', '품명', '규격', '수량', '단가', '금액(합)', '링크', '비고'];
+const HIDDEN_HEADS = ['수량(합)', '희망학급'];   // 더 이상 고를 수 없는 열 이름 (학급별 수량은 '학급별수량' 열을 씁니다)
+const SUP_HEAD = '학급별수량';
+let aList = [], typedHeads = [], aMode = 'new', aFilt = [];   // aList: 열 순서, aFilt: 필터로 쓸 열 이름
+const NO_FILTER = ['금액(합)', '금액', '수량', '단가', '링크', '비고', '학급별수량', '완료상태'];   // 걸러 보기에 맞지 않는 열
+function drawFilt() {
+  const can = aList.filter((h) => NO_FILTER.indexOf(h) < 0); aFilt = aFilt.filter((h) => can.indexOf(h) >= 0);
+  $('aFilt').innerHTML = can.length ? can.map((h) => '<label class="inline-flex items-center gap-1.5"><input type="checkbox" class="aF w-4 h-4" value="' + esc(h) + '" ' + (aFilt.indexOf(h) >= 0 ? 'checked' : '') + '>' + esc(h) + '</label>').join('') : '<span class="text-xs text-slate-400">고를 수 있는 열이 없습니다.</span>';
+  $('aFilt').querySelectorAll('.aF').forEach((c) => c.onchange = () => { aFilt = [...$('aFilt').querySelectorAll('.aF')].filter((x) => x.checked).map((x) => x.value); });
+}
+function aPool() {
+  const saved = ((lists && lists.budgetHeaders) || []).filter((h) => HIDDEN_HEADS.indexOf(h) < 0);
+  return [...new Set(DEFAULT_HEADS.concat([SUP_HEAD], saved, typedHeads))].filter((h) => aList.indexOf(h) < 0);
+}
+function drawOrder() {
+  const chip = 'dchip dnd-handle inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-sm font-semibold select-none ';
+  $('aOrder').innerHTML = aList.length ? aList.map((h) => '<span class="' + chip + 'bg-white border border-indigo-200 text-slate-700" data-n="' + esc(h) + '" data-src="order"><i class="not-italic text-slate-400">⠿</i>' + esc(h) + '<button type="button" data-x="' + esc(h) + '" class="text-slate-400 hover:text-red-600 ml-1" title="빼기">✕</button></span>').join('') : '<span class="text-xs text-slate-400">열이 없습니다. 아래에서 추가하세요.</span>';
+  const pool = aPool();
+  $('aExtra').innerHTML = pool.length ? pool.map((h) => '<span class="' + chip + 'bg-slate-100 text-slate-600 cursor-pointer hover:bg-indigo-50" data-n="' + esc(h) + '" data-src="pool">+ ' + esc(h) + '</span>').join('') : '<span class="text-xs text-slate-400">더 추가할 열이 없습니다. 아래에서 새로 만들 수 있습니다.</span>';
+  $('aOrder').querySelectorAll('[data-x]').forEach((b) => b.onclick = () => { aList = aList.filter((x) => x !== b.dataset.x); drawOrder(); });
+  $('aExtra').querySelectorAll('[data-src="pool"]').forEach((c) => c.onclick = () => { aList.push(c.dataset.n); drawOrder(); });
+  drawFilt();
+}
+DnD.bind($('addModal'), { handle: '.dchip', item: '.dchip', drop: '#aOrder .dchip', zone: '#aOrder, #aExtra', axis: 'x', onDrop: (el, tgt, after, zone) => {
+  const n = el.dataset.n; if (el.dataset.src === 'order') aList = aList.filter((x) => x !== n);
+  if (!tgt && zone && zone.id === 'aExtra') return drawOrder();   // 추가할 열 쪽에 놓으면 열 순서에서 뺌
+  aList = aList.filter((x) => x !== n); const t = tgt ? aList.indexOf(tgt.dataset.n) : -1; aList.splice(t >= 0 ? t + (after ? 1 : 0) : aList.length, 0, n); drawOrder();
+} });
+function openAdd(m) {
+  aMode = m === 'cols' ? 'cols' : 'new'; $('aErr').classList.add('hidden'); typedHeads = []; $('aNew').value = '';
+  const kind = kindOf(mode);
+  if (aMode === 'cols') { aList = kind.custom.cols.map((c) => c.name); aFilt = kind.filters.map((f) => f[0]); void (kind.custom.filters || []).map((id) => (kind.custom.cols.find((c) => c.id === id) || {}).name).filter(Boolean); $('aTitle').textContent = '열 추가 · 순서 변경 (' + kind.custom.name + ')'; $('aNameBox').style.display = 'none'; $('aOk').textContent = '적용'; }
+  else { aList = DEFAULT_HEADS.slice(); aFilt = ['예산종류']; $('aName').value = ''; $('aTitle').textContent = '예산 페이지 추가'; $('aNameBox').style.display = ''; $('aOk').textContent = '추가'; }
+  drawOrder(); $('addModal').classList.remove('hidden'); $('addModal').classList.add('flex'); (aMode === 'new' ? $('aName') : $('aNew')).focus();
+}
+function closeAdd() { $('addModal').classList.add('hidden'); $('addModal').classList.remove('flex'); }
+$('aCancel').onclick = closeAdd;
+$('aNewAdd').onclick = () => {
+  const v = $('aNew').value.trim(); if (!v) return; $('aNew').value = '';
+  if (HIDDEN_HEADS.indexOf(v) >= 0) { $('aErr').textContent = '[' + v + '] 열은 쓸 수 없습니다. 학급별 수량은 [' + SUP_HEAD + '] 열을 쓰세요.'; $('aErr').classList.remove('hidden'); return; }
+  $('aErr').classList.add('hidden');
+  if (aList.indexOf(v) >= 0) return;
+  if (aPool().indexOf(v) < 0 && typedHeads.indexOf(v) < 0) typedHeads.push(v);
+  aList.push(v); drawOrder();
+};
+$('aNew').addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.isComposing) { e.preventDefault(); $('aNewAdd').click(); } });
+$('aOk').onclick = async () => {
+  const fail = (m) => { $('aErr').textContent = m; $('aErr').classList.remove('hidden'); };
+  if (!aList.length) return fail('열을 하나 이상 넣어 주세요.');
+  const saveTyped = async () => {
+    const mine = typedHeads.filter((h) => aList.indexOf(h) >= 0 && DEFAULT_HEADS.indexOf(h) < 0 && h !== SUP_HEAD);
+    if (!mine.length) return;   // 새로 만든 열 이름은 저장해 두어 다음 예산 페이지에서도 고를 수 있게 함
+    try { const cur = (await GP.readList('list_budget_header')).map((i) => ({ value: i.value, extra: {} })); await GP.writeList('list_budget_header', cur.concat(mine.filter((h) => !cur.some((c) => c.value === h)).map((h) => ({ value: h, extra: {} })))); lists = await GP.getLists(); } catch (e) { console.warn('열 이름을 저장하지 못했습니다', e); }
+  };
+  if (aMode === 'cols') {
+    const s = kindOf(mode).custom; const old = s.cols; const gone = old.filter((c) => aList.indexOf(c.name) < 0);
+    if (gone.length && !confirm('[' + gone.map((c) => c.name).join(', ') + '] 열을 뺍니다. 이 열에 입력한 내용은 화면에서 사라집니다. 계속할까요?')) return;
+    const used = new Set(old.map((c) => c.id)); const newId = () => { let k = 1; while (used.has('c' + k)) k++; used.add('c' + k); return 'c' + k; };
+    const next = aList.map((n) => old.find((c) => c.name === n) || { id: newId(), name: n });
+    s.cols = next; s.filters = aFilt.map((n) => (next.find((c) => c.name === n) || {}).id).filter(Boolean); filters = {}; classFilter(); closeAdd(); await enqueue(saveSheets); await saveTyped(); renderGrid(); return;
+  }
+  const name = $('aName').value.trim(); const err = !name ? '예산명을 입력하세요.' : nameError(name); if (err) return fail(err);
+  let n = 1; while (sheets.some((s) => s.id === 's' + n)) n++;
+  const cols = aList.map((h, i) => ({ id: 'c' + (i + 1), name: h }));
+  const sh = { id: 's' + Date.now().toString(36) + n, name, year: curYear, cols, filters: aFilt.map((f) => (cols.find((c) => c.name === f) || {}).id).filter(Boolean) };
+  sheets.push(sh); closeAdd(); await enqueue(saveSheets); await saveTyped();
+  setMode('sheet:' + sh.id);
+};
+$('addModal').addEventListener('keydown', (e) => { if (e.key === 'Escape') closeAdd(); });
+
+// ======================= 내보내기 (엑셀 / 구글 스프레드시트) =======================
+const exportMsg = (html, kind) => { const m = $('exportMsg'); m.className = 'text-sm rounded-lg px-3 py-2 ' + (kind === 'err' ? 'bg-red-50 text-red-700' : kind === 'ok' ? 'bg-emerald-50 text-emerald-800' : 'bg-slate-100 text-slate-600'); m.innerHTML = html; };
+const H = (t) => ({ v: t, s: 'header' }), T = (v) => ({ v: str(v), s: 'text' }), N = (v) => ({ v: num(v), s: 'int' });
+const linkCell = (u) => { u = str(u).trim(); if (!u) return T(''); const h = /^https?:/i.test(u) ? u : 'https://' + u; if (h.length > 250) return { v: u, s: 'text' }; return { v: u, s: 'link', f: 'HYPERLINK("' + h.replace(/"/g, '""') + '","' + u.replace(/"/g, '""') + '")' }; };   // 엑셀 수식 문자열 한도(255자) 때문에 긴 주소는 글자로 넣음
+const totalRow = (n, cols, sumCol, label) => { const r = []; for (let i = 0; i < cols; i++) r.push({ v: '', s: 'totalLabel' }); r[0] = { v: label || '합계', s: 'totalLabel' }; return r; };
+const withFiles = (r, c) => { const f = Array.isArray(r[filesKey(c)]) ? r[filesKey(c)] : []; return str(r[c.k]) + (f.length ? (str(r[c.k]) ? ' ' : '') + f.map((x) => '[첨부: ' + x.name + ']').join(' ') : ''); };
+const safeSheetName = (s) => String(s).replace(/[\[\]:*?\/\\]/g, ' ').trim().slice(0, 31) || '시트';
+const looksNum = (v) => /^-?[\d,]+(\.\d+)?$/.test(str(v).trim()) && str(v).trim() !== '';
+
+// ---- 비고 첨부 사진을 내보내기에 넣기: 줄마다 오른쪽에 "첨부이미지" 칸을 덧붙임 ----
+async function fileDataUrl(f) {
+  if (f.fid) { if (fileCache[f.fid]) return fileCache[f.fid]; const d = await GP.db.collection('data_files').doc(f.fid).get(); if (d.exists) { fileCache[f.fid] = d.data().dataUrl; return fileCache[f.fid]; } return ''; }
+  if (f.url) { try { const res = await fetch(f.url); return await blobToDataUrl(await res.blob()); } catch (e) { return ''; } }
+  return '';
+}
+function thumbOf(dataUrl) {   // 내보내기용 작은 사진(긴 변 240px). 화면 표시 크기는 긴 변 110px
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onerror = () => resolve(null);
+    img.onload = () => {
+      const k = Math.min(1, 240 / Math.max(img.width, img.height)); const w = Math.max(1, Math.round(img.width * k)), h = Math.max(1, Math.round(img.height * k));
+      const cv = document.createElement('canvas'); cv.width = w; cv.height = h; const cx = cv.getContext('2d'); cx.fillStyle = '#fff'; cx.fillRect(0, 0, w, h); cx.drawImage(img, 0, 0, w, h);
+      const url = cv.toDataURL('image/jpeg', 0.65); const bin = atob(url.split(',')[1]); const bytes = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+      const d = Math.min(1, 110 / Math.max(w, h)); resolve({ bytes, url, w: Math.max(1, Math.round(w * d)), h: Math.max(1, Math.round(h * d)) });
+    };
+    img.src = dataUrl;
+  });
+}
+const MAX_IMG_COLS = 5;
+async function attachImages(rows, attCols) {   // -> 줄마다 [사진 ...]
+  const out = [];
+  for (const r of rows) {
+    const list = [];
+    for (const c of attCols) for (const f of (Array.isArray(r[filesKey(c)]) ? r[filesKey(c)] : [])) {
+      if (list.length >= MAX_IMG_COLS || !/^image\//.test(f.type || '')) continue;
+      const du = await fileDataUrl(f); const t = du && await thumbOf(du); if (t) list.push(t);
+    }
+    out.push(list);
+  }
+  return out;
+}
+function addImageCols(sheet, imgs, headerRow, widths) {   // sheet.rows: [머리글, 본문..., (합계)]
+  const cnt = Math.max(0, ...imgs.map((l) => (l ? l.length : 0))); if (!cnt) return;
+  for (let i = 0; i < cnt; i++) { widths.push(20); }
+  headerRow.push(...Array.from({ length: cnt }, (_, i) => H('첨부이미지' + (cnt > 1 ? i + 1 : ''))));
+  sheet.rows.slice(1).forEach((row, ri) => { const l = imgs[ri]; if (!l) { for (let i = 0; i < cnt; i++) row.push({ v: '', s: 'totalLabel' }); return; } for (let i = 0; i < cnt; i++) row.push(l[i] ? { v: '', s: 'center', img: l[i] } : T('')); });
+}
+async function genSheet(kind, rows) {
+  const n = rows.length;
+  // 학급별수량 열은 내보낼 때 두 열로 나눕니다: '학급별 수량'(1반 5개, 2반 2개) · '수량'(총합 숫자)
+  const cols2 = kind.cols.reduce((a, c) => a.concat(c.t === 'sup' ? [Object.assign({}, c, { label: '학급별 수량', supMode: 'txt' }), Object.assign({}, c, { label: '수량', supMode: 'num' })] : [c]), []);
+  const calcI = cols2.findIndex((c) => c.t === 'calc' && c.sum);
+  const body = rows.map((r) => cols2.map((c) => (c.t === 'calc' ? N(c.calc(r)) : c.attach ? T(withFiles(r, c)) : c.t === 'sup' ? (c.supMode === 'num' ? N(supQty(r)) : T(supText(r, false))) : c.t === 'num' || looksNum(r[c.k]) ? N(r[c.k]) : T(r[c.k]))).map((c) => { const bg = rowBg(kind, r); if (bg) c.bg = bg; return c; }));
+  const tail = []; if (calcI >= 0) { const t = totalRow(n, cols2.length); t[calcI] = { v: rows.reduce((a, r) => a + cols2[calcI].calc(r), 0), s: 'totalNum' }; tail.push(t); }
+  const sheet = { name: safeSheetName(kind.name), widths: cols2.map((c) => (c.supMode === 'num' ? 10 : 18)), freezeRow: 1, filter: true, filterRows: n + 1, rows: [cols2.map((c) => H(c.label))].concat(body, tail) };
+  if (cols2.some((c) => c.attach)) addImageCols(sheet, (await attachImages(rows, cols2.filter((c) => c.attach))).concat(tail.length ? [null] : []), sheet.rows[0], sheet.widths);
+  return sheet;
+}
+async function buildExport() {
+  const g = await APP.getGeneral(); const label = g.year + '학년도';
+  const kindX = kindOf(mode); let rows = viewRows(kindX).slice().sort(byOrder);   // 화면에 마지막으로 그린 목록이 아니라, 지금 저장돼 있는 줄 전부(필터 적용)
+  if (!rows.length) rows = allRows(kindX).slice().sort(byOrder);
+  if (mode === 'budget') {
+    const kb = kindOf('budget'); const sheet1 = await genSheet(kb, rows);   // 화면의 열 순서 그대로
+    const cards = (await GP.buildBudgetCards()).filter((c) => !String(c.name).includes('친목회비'));
+    const crow = cards.map((c, i) => [T(c.name), N(c.assigned), N(c.used), { v: num(c.assigned) - num(c.used), s: 'int', f: 'B' + (i + 2) + '-C' + (i + 2) }]);
+    const ct = [{ v: '합계', s: 'totalLabel' }, { v: cards.reduce((a, c) => a + num(c.assigned), 0), s: 'totalNum' }, { v: cards.reduce((a, c) => a + num(c.used), 0), s: 'totalNum' }, { v: cards.reduce((a, c) => a + num(c.assigned) - num(c.used), 0), s: 'totalNum' }];
+    if (cards.length) { ct[1].f = 'SUM(B2:B' + (cards.length + 1) + ')'; ct[2].f = 'SUM(C2:C' + (cards.length + 1) + ')'; ct[3].f = 'SUM(D2:D' + (cards.length + 1) + ')'; }
+    const sheet2 = { name: '예산 현황', widths: [26, 14, 14, 14], freezeRow: 1, rows: [['예산', '배정액', '사용액', '잔액'].map(H)].concat(crow, [ct]) };
+    return { fileName: '학년예산_' + label, title: label + ' ' + g.grade + '학년 예산', sheets: [sheet1, sheet2] };
+  }
+  const kind = kindOf(mode), n = rows.length;
+  if (kind.sem) {   // 학습준비물 1·2학기
+    let sum = 0;
+    const body = rows.map((r, i) => { const x = i + 2; const q = supQty(r), amt = num(r.supply_price) * q; sum += amt;
+      const bg = rowBg(kind, r), cells = [T(r.supply_product), T(r.supply_spec), T(supText(r, false)), N(q), T(r.supply_unit), N(r.supply_price), { v: amt, s: 'int', f: 'F' + x + '*D' + x }, T(r.supply_sub), linkCell(r.supply_link)];
+      if (bg) cells.forEach((c) => { c.bg = bg; }); return cells; });
+    const tot = totalRow(n, 9); tot[6] = { v: sum, s: 'totalNum' }; if (n) tot[6].f = 'SUM(G2:G' + (n + 1) + ')';
+    const sheet = { name: kind.name, widths: [28, 22, 30, 8, 8, 11, 13, 12, 34], freezeRow: 1, filter: true, filterRows: n + 1, rows: [['품명', '규격', '학급별 수량', '수량', '단위', '단가', '금액(합)', '과목', '링크'].map(H)].concat(body, [tot]) };
+    const st = supplyStats(kind);
+    const sum2 = { name: '학급별 사용액', widths: [24, 16], rows: [['구분', '금액'].map(H), [T('학습준비물 총액'), N(st.total)], [T('학년공통사용액'), N(st.common)], [T('반별배부액'), N(st.alloc)]].concat(st.cls.map((c) => [T(c + ' 사용액'), N(st.use[c])])) };
+    return { fileName: '학습준비물' + kind.sem + '학기_' + label, title: label + ' ' + g.grade + '학년 ' + kind.name, sheets: [sheet, sum2] };
+  }
+  const sheet = await genSheet(kind, rows);
+  return { fileName: safeSheetName(kind.name).replace(/\s+/g, '_') + '_' + label, title: label + ' ' + g.grade + '학년 ' + kind.name, sheets: [sheet] };
+}
+
+async function exportXlsx() {
+  const btn = $('btn-xlsx'); btn.disabled = true;
+  try {
+    const ex = await buildExport(); const blob = XlsxLite.toBlob(ex.sheets);
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = ex.fileName + '.xlsx'; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 10000);
+    exportMsg('엑셀 파일(' + esc(ex.fileName) + '.xlsx)을 내려받았습니다.', 'ok');
+  } catch (e) { console.error(e); exportMsg('엑셀로 내보내지 못했습니다: ' + esc(e.message), 'err'); }
+  btn.disabled = false;
+}
+
+async function exportGoogle() {
+  const btn = $('btn-gsheet'); btn.disabled = true;
+  try {
+    const ex = await buildExport();
+    const r = await GSheet.create(ex.title, ex.sheets, (t) => exportMsg(t));
+    exportMsg('스프레드시트를 만들었습니다. <a class="underline font-semibold" target="_blank" rel="noopener" href="' + esc(r.url) + '">' + esc(ex.title) + ' 열기</a> (내 구글 드라이브에 저장됨)', 'ok');
+  } catch (e) { console.error(e); exportMsg('스프레드시트로 내보내지 못했습니다: ' + esc(e.message), 'err'); }
+  btn.disabled = false;
+}
+$('btn-xlsx').onclick = exportXlsx; $('btn-gsheet').onclick = exportGoogle;
+
+// ======================= 다른 사람의 수정 실시간 반영 =======================
+//  app_meta/version 문서 1건만 구독합니다. (누가 저장하면 이 문서의 번호가 올라갈 때만 읽기 1건)
+//  내가 저장한 번호는 own 에 세어 두었다가 빼고, 남는 변화가 있으면 다른 사람이 저장한 것이므로 해당 데이터를 다시 받아 표를 새로 그립니다.
+let baseVer = null, lastVer = {}, syncT = null;
+const pickVer = (v) => { const o = {}; WATCH.forEach((c) => { o[c] = Number(v[c]) || 0; }); return o; };
+function onVersion(snap) {
+  if (snap.metadata && snap.metadata.hasPendingWrites) return;
+  const v = pickVer(snap.data() || {}); lastVer = v;
+  if (!baseVer) { baseVer = v; return; }
+  if (WATCH.some((c) => v[c] - baseVer[c] > (own[c] || 0))) scheduleSync();
+}
+function scheduleSync(ms) { clearTimeout(syncT); syncT = setTimeout(doSync, ms || 700); }
+async function doSync() {
+  const a = document.activeElement; const typing = a && a.matches && a.matches('input.cell') && a.value !== a._orig;
+  if (pendingN > 0 || typing || !$('attModal').classList.contains('hidden')) return scheduleSync(1500);   // 저장·입력·첨부 중에는 끝난 뒤에
+  window.__syncs = (window.__syncs || 0) + 1;
+  const foc = a && a.matches && a.matches('input.cell') ? { id: a.closest('tr').dataset.id, ci: a.dataset.ci, pos: a.selectionStart } : null;
+  const snapVer = Object.assign({}, lastVer);
+  try { await load(true); } catch (e) { console.error(e); return; }
+  baseVer = snapVer; Object.keys(own).forEach((k) => delete own[k]);
+  renderAll();
+  if (foc) { const tr = [...document.querySelectorAll('#gridWrap tbody tr')].find((t) => t.dataset.id === foc.id); const i2 = tr && tr.querySelector('input[data-ci="' + foc.ci + '"]'); if (i2) { i2.focus(); try { i2.setSelectionRange(foc.pos, foc.pos); } catch (e) { /* 무시 */ } } }
+  const el = $('saveState'); el.textContent = '↻ 다른 사람이 수정한 내용을 반영했습니다'; el.className = 'text-xs text-indigo-600 ml-auto'; setTimeout(() => { if (el.textContent.startsWith('↻')) el.textContent = ''; }, 4000);
+}
+function startWatch() { try { const unsub = GP.db.collection('app_meta').doc('version').onSnapshot(onVersion, (e) => console.warn('실시간 동기화를 사용할 수 없습니다', e)); window.addEventListener('pagehide', () => { try { unsub(); } catch (e) { /* 무시 */ } }); } catch (e) { console.warn(e); } }   // 공유 연결을 쓰므로 페이지를 떠날 때 구독을 끊음
+
+// ======================= 시작 =======================
+async function load(fresh) {
+  if (fresh) GP.fresh();
+  const [b, s, sr, cfg, ls, gen, tot] = await Promise.all([getCol('data_budget'), getCol('data_supply'), getCol(SHEET_COL), GP.getCfg('budget_sheets', { sheets: [] }), GP.getLists(), APP.getGeneral(), GP.getCfg('supply_totals', {})]);
+  if (gen && num(gen.year)) curYear = num(gen.year); supplyTotals = (tot && typeof tot === 'object') ? tot : {};
+  data = { budget: b.map((r) => Object.assign({}, r)), supply: s.map((r) => Object.assign({}, r)), sheetRows: sr.map((r) => Object.assign({}, r)) };
+  sheets = Array.isArray(cfg.sheets) ? cfg.sheets : []; sheetSeed = (cfg && cfg.seed) || {}; lists = ls; colWidths = (await GP.getCfg('budget_cols', {})) || {};
+  // 추가한 예산 페이지는 만든 학년도에만 보임(학급운영비는 기본 페이지라 항상). 학년도 표시가 없던 예전 페이지는 만든 날짜(또는 입력한 줄의 학년도)로 정해 저장
+  const noYear = sheets.filter((x) => x.id !== 'classfee' && !num(x.year));
+  if (noYear.length) {
+    let tagged = []; try { tagged = await GP.getColAll(SHEET_COL); } catch (e) { /* 무시 */ }
+    noYear.forEach((x) => {
+      const ms = parseInt(String(x.id).slice(1, 9), 36), d = ms > 1.5e12 && ms < 4.1e12 ? new Date(ms) : null;
+      const ys = tagged.filter((r) => r.sheet === x.id && num(r._year)).map((r) => num(r._year));
+      x.year = d ? APP.yearOf(d) : ys.length ? Math.min.apply(null, ys) : curYear;
+    });
+    try { await saveSheets(); } catch (e) { console.warn('예산 페이지 학년도 표시 저장 보류', e); }
+  }
+  if (mode !== 'budget' && mode !== 'fee' && mode !== 'supply1' && mode !== 'supply2' && !shownSheets().some((x) => 'sheet:' + x.id === mode)) mode = 'budget';
+}
+$('btn-refresh').onclick = async () => { if (pendingN) return; try { await load(true); renderAll(); } catch (e) { setState('error', e.message); } };
+(async function init() {
+  try { await load(false); }
+  catch (e) { console.error(e); $('gridWrap').innerHTML = '<p class="p-6 text-center text-red-600 text-sm">데이터를 불러오지 못했습니다: ' + esc(e.message) + '</p>'; return; }
+  try { await seedClassFee(); } catch (e) { console.warn('학급운영비 기본 페이지 만들기 보류', e); }
+  classFilter(); renderAll(); startWatch();
+})();
+// 기본 예산 페이지 '학급운영비'(학습준비물 다음): 처음 한 번 만들고, 학년도마다 학급별 카드(기본 10만원)를 한 번 넣어 둠.
+//  지우거나 고친 뒤에는 다시 만들지 않습니다(budget_sheets.seed 표시).
+const CF_COLORS = ['#CFE2F3', '#FCE5CD', '#D9EAD3', '#FFF2CC', '#E4D7F5', '#F4CCCC', '#D0E0E3', '#EAD1DC', '#FFE0B2', '#C8E6C9'];
+async function seedClassFee() {
+  const cfg = (await GP.getCfg('budget_sheets', { sheets: [] })) || {}; const seed = Object.assign({}, cfg.seed || {}); let changed = false;
+  if (!seed.classfee) {
+    if (!sheets.some((x) => x.id === 'classfee')) {
+      const cols = DEFAULT_HEADS.map((h, i) => ({ id: 'c' + (i + 1), name: h }));
+      sheets.unshift({ id: 'classfee', name: '학급운영비', cols, filters: ['c1'] });
+    }
+    seed.classfee = true; changed = true;
+  }
+  const yk = 'cards' + curYear;
+  if (!seed[yk] && sheets.some((x) => x.id === 'classfee')) {
+    const cur = await GP.readList('list_budget'); const names = new Set(cur.map((i) => String(i.value).trim()));
+    const add = classNames().filter((c) => !names.has(c)).map((c, i) => ({ value: c, extra: { list_budget_amount: 100000, list_budget_color: CF_COLORS[i % CF_COLORS.length], list_budget_pages: 'sheet:classfee', list_budget_kind: '', list_budget_classes: '', list_budget_common: '' } }));
+    if (add.length) {
+      const keep = cur.map((i) => { const r = i.row || {}; const ex = {}; Object.keys(r).forEach((k) => { if (/^list_budget_/.test(k) && k !== 'list_budget_year' && k !== 'list_budget_order') ex[k] = r[k]; }); return { value: i.value, extra: ex }; });
+      await GP.writeList('list_budget', keep.concat(add)); lists = await GP.getLists();
+    }
+    seed[yk] = true; changed = true;
+  }
+  if (changed) { sheetSeed = seed; await saveSheets(); }
+}
+</script>
+<script>
+  // ↔ 화면 넓게 보기: 누를 때마다 기본(1230px) → 넓게(1600px) → 화면 전체 → 기본. 이 페이지가 스스로 폭을 바꾸고, 고른 단계는 브라우저에 기억합니다.
+  (function () {
+    var KEY = 'gp_wide_budget', SEL = '.max-w-7xl', STEPS = [1230, 1600, 0], L = ['기본', '넓게', '전체'];
+    var b = document.getElementById('wideBtn'); if (!b) return;
+    function get() { var v = 0; try { v = parseInt(localStorage.getItem(KEY), 10) || 0; } catch (e) {} return Math.max(0, Math.min(2, v)); }
+    function apply(n) {
+      var st = document.getElementById('gp-wide-self'); if (!st) { st = document.createElement('style'); st.id = 'gp-wide-self'; document.head.appendChild(st); }
+      st.textContent = 'html body{max-width:none !important}html body ' + SEL + '{max-width:' + (STEPS[n] ? STEPS[n] + 'px' : 'none') + ' !important;margin-left:auto !important;margin-right:auto !important}';
+      document.getElementById('wideLbl').textContent = L[n]; b.title = '화면 넓게 보기 — 지금: ' + L[n] + ' (누를 때마다 기본 → 넓게 → 전체)';
+    }
+    window.__gpWideChanged = function () { apply(get()); };
+    b.onclick = function () { var n = (get() + 1) % 3; try { localStorage.setItem(KEY, n); } catch (e) {} apply(n); };
+    apply(get()); window.addEventListener('load', function () { apply(get()); });
+  })();
+</script>
+</body>
+</html>

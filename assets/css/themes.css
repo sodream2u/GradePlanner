@@ -1,0 +1,234 @@
+@import url("https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css");
+/* 글꼴: 모든 디자인에서 프리텐다드 (크기는 그대로). 아이콘 글꼴(Font Awesome 등)은 건드리지 않음 */
+html body, html body *:not([class*="fa-"]):not(.fa):not(svg):not(svg *) { font-family: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", sans-serif !important; }
+/* =====================================================================
+   디자인 보기(테마): 기본 / 플랫 / 뉴(뉴모피즘) / 클레이(클레이모피즘)
+   - 상단 바의 버튼이 <html data-gp-theme="flat|neu|clay"> 를 바꿉니다. (기본 = 속성 없음)
+   - 색·그림자·모서리·아이콘 모양만 바꿉니다. 배치(크기·간격)와 동작, 내용은 그대로입니다.
+   - 시간표 칸처럼 화면에서 직접 색을 정한 칸(인라인 style)은 그 색을 그대로 둡니다.
+   ===================================================================== */
+
+/* ---------- 공통: 상단 바의 디자인 선택 버튼 ---------- */
+#themeSel { margin-left: auto; display: flex; gap: 2px; padding: 2px; border-radius: 9px; background: #f1f5f9; flex-shrink: 0; }
+#themeSel button { border: 0; background: transparent; font: inherit; font-size: 11.5px; font-weight: 600; color: #64748b; padding: 4px 8px; border-radius: 7px; cursor: pointer; white-space: nowrap; }
+#themeSel button:hover { color: #1e293b; }
+#themeSel button.on { background: #fff; color: #4338ca; box-shadow: 0 1px 2px rgba(15,23,42,.15); }
+@media (max-width: 480px) { #themeSel button { padding: 4px 5px; font-size: 11px; } }
+
+/* =====================================================================
+   1) 플랫 — 그림자·그라데이션 없음, 또렷한 단색 면과 굵은 선, 작은 모서리
+   ===================================================================== */
+html[data-gp-theme="flat"] body,
+html[data-gp-theme="flat"] .bg-slate-50:not(td):not(th),
+html[data-gp-theme="flat"] .bg-gray-50:not(td):not(th) { background-color: #f8fafc; }
+html[data-gp-theme="flat"] *:not([class*="dnd-"]) { box-shadow: none !important; text-shadow: none !important; }
+html[data-gp-theme="flat"] .rounded-xl, html[data-gp-theme="flat"] .rounded-2xl, html[data-gp-theme="flat"] .rounded-lg { border-radius: 6px; }
+html[data-gp-theme="flat"] .bg-white.rounded-xl, html[data-gp-theme="flat"] .bg-white.rounded-2xl, html[data-gp-theme="flat"] .bg-white.shadow-sm { border-color: #d7dde8; }
+html[data-gp-theme="flat"] .gpcard { background-image: none !important; border: 2px solid rgba(15, 23, 42, .08); border-radius: 6px; }
+html[data-gp-theme="flat"] .gpc1 { background-color: #d1fae5; } html[data-gp-theme="flat"] .gpc2 { background-color: #fef3c7; } html[data-gp-theme="flat"] .gpc3 { background-color: #dbeafe; }
+html[data-gp-theme="flat"] .rounded-xl.shadow-sm:not(.bg-white) { border-width: 2px; border-color: rgba(15, 23, 42, .08); }
+html[data-gp-theme="flat"] .bg-indigo-600, html[data-gp-theme="flat"] .bg-blue-600 { background-color: #2563eb; }
+html[data-gp-theme="flat"] .bg-indigo-600:hover, html[data-gp-theme="flat"] .bg-blue-600:hover { background-color: #1d4ed8; }
+html[data-gp-theme="flat"] .bg-slate-100:not(td):not(th) { background-color: #e2e8f0; }
+html[data-gp-theme="flat"] .text-indigo-600, html[data-gp-theme="flat"] .text-indigo-700 { color: #2563eb; }
+html[data-gp-theme="flat"] input:not([type=checkbox]):not([type=radio]):not([type=color]), html[data-gp-theme="flat"] select, html[data-gp-theme="flat"] textarea { border-radius: 4px; border-color: #c7cfdc; }
+html[data-gp-theme="flat"] input:focus, html[data-gp-theme="flat"] select:focus, html[data-gp-theme="flat"] textarea:focus { outline: 2px solid #2563eb; outline-offset: -1px; }
+/* 아이콘: 굵고 각진 선 */
+html[data-gp-theme="flat"] svg[stroke]:not(.gp-has-alt):not(.gp-alt) { stroke-width: 2.6; stroke-linecap: square; stroke-linejoin: miter; }
+/* 상단 바·메뉴 */
+html[data-gp-theme="flat"] #bar { background: #2563eb; border-bottom: 0; }
+html[data-gp-theme="flat"] #bar #title, html[data-gp-theme="flat"] #bar #burger { color: #fff; }
+html[data-gp-theme="flat"] #bar #pageName { color: #dbeafe; }
+html[data-gp-theme="flat"] #bar #burger:hover { background: #1d4ed8; }
+html[data-gp-theme="flat"] #themeSel { background: #1d4ed8; }
+html[data-gp-theme="flat"] #themeSel button { color: #dbeafe; }
+html[data-gp-theme="flat"] #themeSel button.on { background: #fff; color: #1d4ed8; }
+html[data-gp-theme="flat"] #drawer { border-right: 2px solid #d7dde8; }
+html[data-gp-theme="flat"] .nav-item { border-radius: 4px; }
+html[data-gp-theme="flat"] .nav-item.active { background: #2563eb; color: #fff; }
+html[data-gp-theme="flat"] #frame { background: #f8fafc; }
+
+/* =====================================================================
+   2) 뉴(뉴모피즘) — 바탕과 같은 색의 면이 부드러운 빛·그림자로 솟아오르거나 눌려 보임
+   ===================================================================== */
+html[data-gp-theme="neu"] { --neu: #f8fafc; --neu-d: #cfd7e3; --neu-l: #ffffff; --neu-in: #f3f6fa; }
+html[data-gp-theme="neu"] body,
+html[data-gp-theme="neu"] .bg-slate-50:not(td):not(th),
+html[data-gp-theme="neu"] .bg-gray-50:not(td):not(th) { background-color: var(--neu); }
+/* 카드: 솟아오른 면 */
+html[data-gp-theme="neu"] .bg-white.rounded-xl, html[data-gp-theme="neu"] .bg-white.rounded-2xl,
+html[data-gp-theme="neu"] .bg-white.shadow-sm, html[data-gp-theme="neu"] .bg-white.shadow, html[data-gp-theme="neu"] .bg-white.shadow-md,
+html[data-gp-theme="neu"] .bg-white.shadow-xl, html[data-gp-theme="neu"] .bg-white.shadow-2xl {
+  background-color: var(--neu); border-color: transparent; border-radius: 18px;
+  box-shadow: 7px 7px 14px var(--neu-d), -7px -7px 14px var(--neu-l);
+}
+/* 색이 있는 카드(예산 카드·날짜 카드 등)는 색은 두고 솟아오른 모양만 */
+html[data-gp-theme="neu"] .rounded-xl.shadow-sm:not(.bg-white), html[data-gp-theme="neu"] .rounded-lg.shadow-sm:not(.bg-white), html[data-gp-theme="neu"] .gpcard {
+  border-color: transparent; border-radius: 18px; box-shadow: 6px 6px 12px var(--neu-d), -6px -6px 12px var(--neu-l);
+}
+html[data-gp-theme="neu"] header.bg-white, html[data-gp-theme="neu"] nav.bg-white { background-color: var(--neu); box-shadow: 0 6px 12px -6px var(--neu-d); }
+/* 표: 칸은 살짝 밝게, 선은 옅게 (색을 직접 정한 칸은 그대로) */
+html[data-gp-theme="neu"] table { background-color: transparent; }
+html[data-gp-theme="neu"] td.bg-white, html[data-gp-theme="neu"] th.bg-white, html[data-gp-theme="neu"] tr.bg-white { background-color: #eef2f7; }
+html[data-gp-theme="neu"] td, html[data-gp-theme="neu"] th { border-color: #cfd6e0; }
+/* 버튼: 솟은 단추, 누르면 들어감 */
+html[data-gp-theme="neu"] button.bg-indigo-600, html[data-gp-theme="neu"] .bg-indigo-600.rounded-lg, html[data-gp-theme="neu"] button.bg-blue-600 {
+  background-color: var(--neu); color: #4f46e5; box-shadow: 4px 4px 8px var(--neu-d), -4px -4px 8px var(--neu-l);
+}
+html[data-gp-theme="neu"] button.bg-indigo-600:hover, html[data-gp-theme="neu"] button.bg-blue-600:hover { background-color: var(--neu); color: #3730a3; }
+html[data-gp-theme="neu"] button.bg-slate-100, html[data-gp-theme="neu"] label.bg-slate-100, html[data-gp-theme="neu"] .bg-slate-100.rounded-lg {
+  background-color: var(--neu); box-shadow: 4px 4px 8px var(--neu-d), -4px -4px 8px var(--neu-l);
+}
+html[data-gp-theme="neu"] button:active { box-shadow: inset 3px 3px 6px var(--neu-d), inset -3px -3px 6px var(--neu-l) !important; }
+/* 입력칸: 눌린 홈 */
+html[data-gp-theme="neu"] input:not([type=checkbox]):not([type=radio]):not([type=color]), html[data-gp-theme="neu"] select, html[data-gp-theme="neu"] textarea {
+  background-color: var(--neu); border-color: transparent; border-radius: 10px; box-shadow: inset 3px 3px 6px var(--neu-d), inset -3px -3px 6px var(--neu-l);
+}
+/* 표 안의 입력칸은 칸 색을 따르도록 그대로 둠 */
+html[data-gp-theme="neu"] td input:not([type=checkbox]):not([type=radio]):not([type=color]), html[data-gp-theme="neu"] td select, html[data-gp-theme="neu"] th input:not([type=checkbox]):not([type=radio]):not([type=color]) { background-color: transparent; box-shadow: none; border-radius: 0; }
+html[data-gp-theme="neu"] .text-indigo-600, html[data-gp-theme="neu"] .text-indigo-700 { color: #4f46e5; }
+/* 아이콘: 가늘고 부드러운 회청색 */
+html[data-gp-theme="neu"] svg[stroke]:not(.gp-has-alt):not(.gp-alt) { stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+html[data-gp-theme="neu"] h1 svg, html[data-gp-theme="neu"] h2 svg, html[data-gp-theme="neu"] h3 svg { color: #6b7a99; }
+/* 상단 바·메뉴 */
+html[data-gp-theme="neu"] #bar { background: var(--neu); border-bottom: 0; box-shadow: 0 4px 10px -4px var(--neu-d); }
+html[data-gp-theme="neu"] #burger { box-shadow: 3px 3px 6px var(--neu-d), -3px -3px 6px var(--neu-l); }
+html[data-gp-theme="neu"] #burger:hover { background: var(--neu); }
+html[data-gp-theme="neu"] #themeSel { background: var(--neu); box-shadow: inset 2px 2px 5px var(--neu-d), inset -2px -2px 5px var(--neu-l); }
+html[data-gp-theme="neu"] #themeSel button.on { background: var(--neu); box-shadow: 2px 2px 4px var(--neu-d), -2px -2px 4px var(--neu-l); }
+html[data-gp-theme="neu"] #drawer { background: var(--neu); }
+html[data-gp-theme="neu"] .nav-item:hover { background: transparent; box-shadow: 3px 3px 6px var(--neu-d), -3px -3px 6px var(--neu-l); }
+html[data-gp-theme="neu"] .nav-item.active { background: var(--neu); color: #4338ca; box-shadow: inset 3px 3px 6px var(--neu-d), inset -3px -3px 6px var(--neu-l); }
+html[data-gp-theme="neu"] #frame, html[data-gp-theme="neu"] body { background: var(--neu); }
+
+/* =====================================================================
+   3) 클레이(클레이모피즘) — 파스텔 바탕 위에 말랑하게 부푼 둥근 면, 안쪽 하이라이트
+   ===================================================================== */
+html[data-gp-theme="clay"] { --clay-bg: #f8fafc; --clay-sh: rgba(51, 65, 85, .22); }
+html[data-gp-theme="clay"] body,
+html[data-gp-theme="clay"] .bg-slate-50:not(td):not(th),
+html[data-gp-theme="clay"] .bg-gray-50:not(td):not(th) { background-color: var(--clay-bg); }
+/* 카드: 부푼 찰흙 면 */
+html[data-gp-theme="clay"] .bg-white.rounded-xl, html[data-gp-theme="clay"] .bg-white.rounded-2xl,
+html[data-gp-theme="clay"] .bg-white.shadow-sm, html[data-gp-theme="clay"] .bg-white.shadow, html[data-gp-theme="clay"] .bg-white.shadow-md,
+html[data-gp-theme="clay"] .bg-white.shadow-xl, html[data-gp-theme="clay"] .bg-white.shadow-2xl {
+  border-color: transparent; border-radius: 26px;
+  box-shadow: 0 16px 28px -14px var(--clay-sh), inset -6px -6px 12px rgba(79, 70, 229, .10), inset 6px 6px 12px rgba(255, 255, 255, .95);
+}
+html[data-gp-theme="clay"] .rounded-xl.shadow-sm:not(.bg-white), html[data-gp-theme="clay"] .rounded-lg.shadow-sm:not(.bg-white), html[data-gp-theme="clay"] .gpcard {
+  border-color: transparent; border-radius: 26px;
+  box-shadow: 0 14px 24px -14px var(--clay-sh), inset -5px -6px 10px rgba(0, 0, 0, .07), inset 5px 5px 10px rgba(255, 255, 255, .8);
+}
+html[data-gp-theme="clay"] header.bg-white, html[data-gp-theme="clay"] nav.bg-white { box-shadow: 0 10px 20px -14px var(--clay-sh); }
+html[data-gp-theme="clay"] td, html[data-gp-theme="clay"] th { border-color: #e2e8f0; }
+/* 버튼: 통통한 알약 */
+html[data-gp-theme="clay"] button.rounded-lg, html[data-gp-theme="clay"] label.rounded-lg, html[data-gp-theme="clay"] button.rounded-xl { border-radius: 999px; }
+html[data-gp-theme="clay"] button.bg-indigo-600, html[data-gp-theme="clay"] .bg-indigo-600.rounded-lg, html[data-gp-theme="clay"] button.bg-blue-600 {
+  background-color: #4f46e5; box-shadow: 0 8px 16px -8px rgba(79, 70, 229, .8), inset -3px -4px 6px rgba(49, 46, 129, .35), inset 3px 3px 6px rgba(255, 255, 255, .45);
+}
+html[data-gp-theme="clay"] button.bg-indigo-600:hover, html[data-gp-theme="clay"] button.bg-blue-600:hover { background-color: #4338ca; }
+html[data-gp-theme="clay"] button.bg-slate-100, html[data-gp-theme="clay"] label.bg-slate-100 {
+  background-color: #eef2ff; box-shadow: 0 6px 12px -8px var(--clay-sh), inset -2px -3px 5px rgba(79, 70, 229, .15), inset 2px 2px 5px rgba(255, 255, 255, .9);
+}
+html[data-gp-theme="clay"] .text-indigo-600, html[data-gp-theme="clay"] .text-indigo-700 { color: #4338ca; }
+/* 입력칸: 말랑한 홈 */
+html[data-gp-theme="clay"] input:not([type=checkbox]):not([type=radio]):not([type=color]), html[data-gp-theme="clay"] select, html[data-gp-theme="clay"] textarea {
+  border-color: #c7d2fe; border-radius: 14px; box-shadow: inset 2px 3px 6px rgba(79, 70, 229, .12);
+}
+html[data-gp-theme="clay"] td input:not([type=checkbox]):not([type=radio]):not([type=color]), html[data-gp-theme="clay"] td select, html[data-gp-theme="clay"] th input:not([type=checkbox]):not([type=radio]):not([type=color]) { border-radius: 0; box-shadow: none; }
+html[data-gp-theme="clay"] input[type=checkbox], html[data-gp-theme="clay"] input[type=radio] { accent-color: #4f46e5; }
+/* 아이콘: 두툼한 선 + 속을 옅게 채움 */
+html[data-gp-theme="clay"] svg[stroke]:not(.gp-has-alt):not(.gp-alt) { stroke-width: 2.3; stroke-linecap: round; stroke-linejoin: round; fill: currentColor; fill-opacity: .16; }
+/* 상단 바·메뉴 */
+html[data-gp-theme="clay"] #bar { background: #ffffff; border-bottom: 0; box-shadow: 0 8px 18px -12px var(--clay-sh); }
+html[data-gp-theme="clay"] #title, html[data-gp-theme="clay"] #drawerTitle { color: #4338ca; }
+html[data-gp-theme="clay"] #burger { border-radius: 14px; background: #eef2ff; box-shadow: inset -2px -3px 5px rgba(79, 70, 229, .18), inset 2px 2px 5px #fff; }
+html[data-gp-theme="clay"] #themeSel { background: #eef2ff; border-radius: 999px; }
+html[data-gp-theme="clay"] #themeSel button { border-radius: 999px; }
+html[data-gp-theme="clay"] #themeSel button.on { color: #4338ca; box-shadow: 0 4px 8px -4px var(--clay-sh), inset 2px 2px 4px #fff; }
+html[data-gp-theme="clay"] #drawer { background: #ffffff; border-radius: 0 26px 26px 0; }
+html[data-gp-theme="clay"] .nav-item { border-radius: 999px; }
+html[data-gp-theme="clay"] .nav-item:hover { background: #eef2ff; }
+html[data-gp-theme="clay"] .nav-item.active { background: #4f46e5; color: #fff; box-shadow: 0 6px 12px -6px rgba(79, 70, 229, .8), inset -2px -3px 5px rgba(49, 46, 129, .3), inset 2px 2px 5px rgba(255, 255, 255, .4); }
+html[data-gp-theme="clay"] #frame { background: var(--clay-bg); }
+
+/* =====================================================================
+   아이콘 그림 교체 (theme-icons.js 가 원래 아이콘 안에 세 가지 모양을 넣어 둠)
+   플랫 = 꽉 찬 단색(Fill) · 뉴 = 가늘고 부드러운 선(Light) · 클레이 = 두 톤(Duotone)
+   ===================================================================== */
+svg .gp-alt { display: none; }
+html[data-gp-theme="flat"] svg.gp-has-alt > :not(.gp-alt), html[data-gp-theme="neu"] svg.gp-has-alt > :not(.gp-alt), html[data-gp-theme="clay"] svg.gp-has-alt > :not(.gp-alt), html[data-gp-theme="glass"] svg.gp-has-alt > :not(.gp-alt) { display: none; }
+html[data-gp-theme="flat"] svg.gp-has-alt > .gp-alt-f, html[data-gp-theme="neu"] svg.gp-has-alt > .gp-alt-l, html[data-gp-theme="clay"] svg.gp-has-alt > .gp-alt-d, html[data-gp-theme="glass"] svg.gp-has-alt > .gp-alt-g { display: inline; }
+html[data-gp-theme="clay"] .text-white svg.gp-has-alt > .gp-alt-d, html[data-gp-theme="clay"] button.bg-indigo-600 svg.gp-has-alt > .gp-alt-d, html[data-gp-theme="clay"] .bg-red-500 svg.gp-has-alt > .gp-alt-d { color: inherit; }
+
+/* =====================================================================
+   페이지 위쪽 제목줄(고정 머리글) — 스크롤해도 디자인과 어울리게
+   ===================================================================== */
+/* 플랫: 흰 바탕 + 굵은 아래 선, 그림자 없음 */
+html[data-gp-theme="flat"] header.bg-white, html[data-gp-theme="flat"] nav.bg-white, html[data-gp-theme="flat"] .bg-white.sticky:not(.rounded-xl), html[data-gp-theme="flat"] .bg-white.border-b:not(td):not(th):not(tr) {
+  border-radius: 0; border-bottom: 2px solid #d7dde8;
+}
+html[data-gp-theme="flat"] #bar { background: #fff; border-bottom: 3px solid #2563eb; }
+html[data-gp-theme="flat"] #bar #title { color: #1d4ed8; }
+html[data-gp-theme="flat"] #bar #burger { color: #1e293b; }
+html[data-gp-theme="flat"] #bar #pageName { color: #64748b; }
+html[data-gp-theme="flat"] #bar #burger:hover { background: #e2e8f0; }
+html[data-gp-theme="flat"] #themeSel { background: #e2e8f0; }
+html[data-gp-theme="flat"] #themeSel button { color: #475569; }
+html[data-gp-theme="flat"] #themeSel button.on { background: #2563eb; color: #fff; }
+/* 뉴: 흰 바탕 위에 아래로 부드러운 그림자만 */
+html[data-gp-theme="neu"] header.bg-white, html[data-gp-theme="neu"] nav.bg-white, html[data-gp-theme="neu"] .bg-white.sticky:not(.rounded-xl), html[data-gp-theme="neu"] .bg-white.border-b:not(td):not(th):not(tr) {
+  background-color: var(--neu); border-radius: 0; border-color: transparent; box-shadow: 0 8px 14px -10px var(--neu-d);
+}
+html[data-gp-theme="neu"] #bar { background: var(--neu); box-shadow: 0 8px 14px -10px var(--neu-d); }
+html[data-gp-theme="neu"] td.bg-white, html[data-gp-theme="neu"] th.bg-white, html[data-gp-theme="neu"] tr.bg-white { background-color: #fff; }
+html[data-gp-theme="neu"] .bg-slate-50:not(td):not(th), html[data-gp-theme="neu"] .bg-gray-50:not(td):not(th) { background-color: var(--neu); }
+/* 클레이: 반투명 파스텔 + 흐림 효과, 아래쪽 둥근 모서리 */
+html[data-gp-theme="clay"] header.bg-white, html[data-gp-theme="clay"] nav.bg-white, html[data-gp-theme="clay"] .bg-white.sticky:not(.rounded-xl), html[data-gp-theme="clay"] .bg-white.border-b:not(td):not(th):not(tr) {
+  background-color: rgba(248, 250, 252, .85); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+  border-color: transparent; border-radius: 0 0 22px 22px; box-shadow: 0 10px 22px -16px var(--clay-sh), inset 0 -2px 4px rgba(79, 70, 229, .08);
+}
+html[data-gp-theme="clay"] #bar { background: rgba(248, 250, 252, .92); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); border-radius: 0 0 22px 22px; }
+html[data-gp-theme="clay"] #frame { background: var(--clay-bg); }
+html[data-gp-theme="clay"] body { background-color: var(--clay-bg); }
+
+/* =====================================================================
+   5) 글래스(글래스모피즘) — 바탕은 기본과 같은 색, 반투명 유리 면 + 흐림 + 밝은 테두리
+   ===================================================================== */
+html[data-gp-theme="glass"] { --gl: rgba(255, 255, 255, .55); --gl-b: rgba(255, 255, 255, .75); --gl-line: rgba(148, 163, 184, .28); --gl-sh: 0 8px 28px rgba(15, 23, 42, .08); }
+html[data-gp-theme="glass"] .bg-white.rounded-xl, html[data-gp-theme="glass"] .bg-white.rounded-2xl,
+html[data-gp-theme="glass"] .bg-white.shadow-sm, html[data-gp-theme="glass"] .bg-white.shadow, html[data-gp-theme="glass"] .bg-white.shadow-md,
+html[data-gp-theme="glass"] .bg-white.shadow-xl, html[data-gp-theme="glass"] .bg-white.shadow-2xl {
+  background-color: var(--gl); -webkit-backdrop-filter: blur(16px) saturate(160%); backdrop-filter: blur(16px) saturate(160%);
+  border: 1px solid var(--gl-b); outline: 1px solid var(--gl-line); outline-offset: -1px; border-radius: 18px; box-shadow: var(--gl-sh), inset 0 1px 0 rgba(255, 255, 255, .9);
+}
+html[data-gp-theme="glass"] .rounded-xl.shadow-sm:not(.bg-white), html[data-gp-theme="glass"] .rounded-lg.shadow-sm:not(.bg-white), html[data-gp-theme="glass"] .gpcard {
+  border: 1px solid rgba(255, 255, 255, .8); border-radius: 18px; box-shadow: var(--gl-sh), inset 0 1px 0 rgba(255, 255, 255, .85), inset 0 -1px 0 rgba(15, 23, 42, .04);
+}
+html[data-gp-theme="glass"] td, html[data-gp-theme="glass"] th { border-color: rgba(148, 163, 184, .3); }
+html[data-gp-theme="glass"] td.bg-white, html[data-gp-theme="glass"] th.bg-white { background-color: rgba(255, 255, 255, .6); }
+/* 버튼: 유리 알약 */
+html[data-gp-theme="glass"] button.bg-indigo-600, html[data-gp-theme="glass"] .bg-indigo-600.rounded-lg, html[data-gp-theme="glass"] button.bg-blue-600 {
+  background-color: rgba(79, 70, 229, .82); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); border: 1px solid rgba(255, 255, 255, .35); box-shadow: 0 6px 18px rgba(79, 70, 229, .25), inset 0 1px 0 rgba(255, 255, 255, .35);
+}
+html[data-gp-theme="glass"] button.bg-slate-100, html[data-gp-theme="glass"] label.bg-slate-100, html[data-gp-theme="glass"] .bg-slate-100.rounded-lg, html[data-gp-theme="glass"] .bg-slate-100.rounded-full {
+  background-color: rgba(255, 255, 255, .55); border: 1px solid rgba(148, 163, 184, .3); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .9);
+}
+html[data-gp-theme="glass"] button.bg-slate-100:hover, html[data-gp-theme="glass"] label.bg-slate-100:hover { background-color: rgba(255, 255, 255, .8); }
+/* 입력칸 */
+html[data-gp-theme="glass"] input:not([type=checkbox]):not([type=radio]):not([type=color]), html[data-gp-theme="glass"] select, html[data-gp-theme="glass"] textarea {
+  background-color: rgba(255, 255, 255, .6); border-color: rgba(148, 163, 184, .35); border-radius: 12px; -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
+}
+html[data-gp-theme="glass"] td input:not([type=checkbox]):not([type=radio]):not([type=color]), html[data-gp-theme="glass"] td select { background-color: transparent; border-radius: 0; -webkit-backdrop-filter: none; backdrop-filter: none; }
+/* 위쪽 제목줄·상단 바·메뉴 */
+html[data-gp-theme="glass"] header.bg-white, html[data-gp-theme="glass"] nav.bg-white, html[data-gp-theme="glass"] .bg-white.sticky:not(.rounded-xl), html[data-gp-theme="glass"] .bg-white.border-b:not(td):not(th):not(tr) {
+  background-color: rgba(255, 255, 255, .6); -webkit-backdrop-filter: blur(16px) saturate(160%); backdrop-filter: blur(16px) saturate(160%); border-radius: 0; border-color: rgba(148, 163, 184, .25); box-shadow: 0 6px 20px -12px rgba(15, 23, 42, .15);
+}
+html[data-gp-theme="glass"] #bar { background: rgba(255, 255, 255, .65); -webkit-backdrop-filter: blur(16px) saturate(160%); backdrop-filter: blur(16px) saturate(160%); border-bottom: 1px solid rgba(148, 163, 184, .25); }
+html[data-gp-theme="glass"] #burger { border: 1px solid rgba(148, 163, 184, .3); background: rgba(255, 255, 255, .5); }
+html[data-gp-theme="glass"] #themeSel { background: rgba(255, 255, 255, .5); border: 1px solid rgba(148, 163, 184, .3); }
+html[data-gp-theme="glass"] #themeSel button.on { background: rgba(255, 255, 255, .9); box-shadow: 0 2px 8px rgba(15, 23, 42, .1); }
+html[data-gp-theme="glass"] #drawer { background: rgba(255, 255, 255, .75); -webkit-backdrop-filter: blur(18px); backdrop-filter: blur(18px); }
+html[data-gp-theme="glass"] .nav-item { border-radius: 12px; }
+html[data-gp-theme="glass"] .nav-item.active { background: rgba(79, 70, 229, .12); box-shadow: inset 0 0 0 1px rgba(79, 70, 229, .2); }
+html[data-gp-theme="glass"] svg[stroke]:not(.gp-has-alt):not(.gp-alt) { stroke-width: 1.6; }

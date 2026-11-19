@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <link rel="stylesheet" href="../assets/css/tw-base.css?v=20261117f">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>학년 개요</title>
+  <script src="../assets/js/fb-boot.js?v=20261117f"></script>
+  <script src="../assets/js/firebase-config.js?v=20261117f"></script>
+  <script src="../assets/js/gas-shim.js?v=20261117f"></script>
+  <script src="../assets/js/app-data.js?v=20261117f"></script>
+  <style>
+    body { font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', 'Noto Sans KR', sans-serif; background:#f8fafc; }
+    .cell { white-space: pre-wrap; word-break: break-word; overflow-wrap: anywhere; }
+    /* 학년 개요 표: 반 열은 균등 배분. 구분 열 최대 5글자, 계 열 최대 3글자, 반 열 최대 8글자 너비(표가 좁아지면 같은 비율로 줄어듦) */
+    #info { table-layout: fixed; width: 100%; margin: 0 auto; }
+    #info th, #info td { text-align: center; vertical-align: middle; }
+    #info input.memo { text-align: center; }
+    #info.narrow { font-size: 11px; }   /* 좁은 화면: 글자·여백을 줄여 가로 스크롤 없이 한 화면에 */
+    #info.narrow th, #info.narrow td { padding: .4rem .1rem; overflow: hidden; }
+    #info.narrow input.memo { font-size: 11px; padding: 0; }
+    #info col.ovh { width: var(--ph); }
+    #info col.ovc { width: var(--pc); }
+    #info col.ovs { width: var(--ps); }
+    #info input.memo { min-width: 0; }
+    button.edit { min-width: 36px; min-height: 36px; font-size: 16px; touch-action: manipulation; }
+    .row-sat { background:#e0f2fe; color:#2563eb; }
+    .row-sun { background:#fce7f3; color:#dc2626; }
+    .row-today td { box-shadow: inset 0 3px 0 #2563eb, inset 0 -3px 0 #2563eb; }
+    .row-today td:first-child { box-shadow: inset 3px 0 0 #2563eb, inset 0 3px 0 #2563eb, inset 0 -3px 0 #2563eb; }
+    .row-today td:last-child { box-shadow: inset -3px 0 0 #2563eb, inset 0 3px 0 #2563eb, inset 0 -3px 0 #2563eb; }
+  </style>
+  <link rel="stylesheet" href="../assets/css/tw-util.css?v=20261117f">
+</head>
+<body class="p-4 md:p-6 text-slate-800">
+<div class="max-w-7xl mx-auto space-y-6">
+  <h1 class="text-2xl font-bold"><span id="gradeLabel">6</span>학년 개요 <span id="yearLabel" class="text-base font-medium text-slate-400"></span></h1>
+
+  <section class="space-y-2">
+    <div class="flex items-center gap-2"><h2 class="font-bold text-lg">학년 개요</h2><button type="button" class="ov-fold inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold bg-slate-100 text-slate-600 hover:bg-slate-200" data-fold="ovInfo" aria-expanded="false"><span class="ov-ic">▸</span><span class="ov-lb">펼치기</span></button></div>
+    <div id="ovInfo" style="display:none" class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-x-auto"><table class="w-full text-sm text-center" id="info"></table></div>
+  </section>
+
+  <section id="dayCards"></section>
+
+  <section class="space-y-2">
+    <div class="flex items-center gap-2"><h2 class="font-bold text-lg">학년 예산</h2><button type="button" class="ov-fold inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold bg-slate-100 text-slate-600 hover:bg-slate-200" data-fold="ovCards" aria-expanded="false"><span class="ov-ic">▸</span><span class="ov-lb">펼치기</span></button></div>
+    <div id="ovCards" style="display:none"><div id="cards" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3"></div></div>
+  </section>
+
+  <section class="space-y-2">
+    <div class="flex flex-wrap items-center justify-between gap-2">
+      <h2 class="font-bold text-lg">전체 일정</h2>
+      <div class="flex gap-1 bg-slate-100 p-1 rounded-lg" id="filters">
+        <button data-f="week" class="px-3 py-1 rounded-md text-sm font-semibold">이번주</button>
+        <button data-f="today" class="px-3 py-1 rounded-md text-sm font-semibold">오늘</button>
+        <button data-f="all" class="px-3 py-1 rounded-md text-sm font-semibold">전체</button>
+      </div>
+    </div>
+    <div id="scroller" class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-y-auto overflow-x-auto relative" style="max-height:68vh">
+      <table class="w-full text-sm" style="table-layout:fixed;width:100%;min-width:640px">
+        <colgroup><col style="width:8.5rem"><col><col><col></colgroup>
+        <thead class="bg-slate-100 text-slate-600 sticky top-0 z-10"><tr>
+          <th class="p-2 border-b">날짜</th><th class="p-2 border-b">학교 행사</th><th class="p-2 border-b">학년 강사 일정</th><th class="p-2 border-b">학년 일정</th>
+        </tr></thead>
+        <tbody id="body"></tbody>
+      </table>
+    </div>
+  </section>
+</div>
+
+<!-- 수정 팝업 -->
+<div id="modal" class="fixed inset-0 bg-black/40 hidden items-center justify-center p-4 z-50">
+  <div class="bg-white rounded-2xl shadow-xl w-full max-w-lg p-5 space-y-3 max-h-[92vh] overflow-y-auto">
+    <h3 id="mTitle" class="font-bold text-lg"></h3>
+    <div>
+      <div class="flex items-center justify-between mb-1"><label class="text-sm font-semibold">학교 행사</label>
+        <label class="text-sm flex items-center gap-1"><input type="checkbox" id="mHol"> 휴일</label></div>
+      <textarea id="mSchool" rows="3" class="w-full border rounded-lg p-2 text-sm"></textarea>
+      <p id="mErr" class="text-sm font-semibold text-red-600 mt-1 hidden"></p>
+      <p id="mNote" class="text-xs text-slate-400 mt-1 whitespace-pre-wrap"></p>
+    </div>
+    <div><label class="text-sm font-semibold block mb-1">학년 강사 일정 <span class="font-normal text-slate-400">(수정 불가)</span></label>
+      <textarea id="mLec" rows="2" disabled class="w-full border rounded-lg p-2 text-sm bg-slate-100 text-slate-500"></textarea></div>
+    <div><label class="text-sm font-semibold block mb-1">학년 일정</label>
+      <textarea id="mMemo" rows="3" class="w-full border rounded-lg p-2 text-sm"></textarea>
+      <p id="mMemoNote" class="text-xs text-slate-400 mt-1 whitespace-pre-wrap"></p></div>
+    <div class="flex justify-end gap-2 pt-1">
+      <button id="mCancel" class="px-4 py-2 rounded-lg bg-slate-100 text-sm font-semibold">취소</button>
+      <button id="mSave" class="px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-semibold">저장</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const DAYN = ['일','월','화','수','목','금','토'];
+const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const fmt = (n) => Number(n).toLocaleString();
+let general, rows = [], filter = 'today', editing = null, semRows = {};
+const todayDate = () => { const t = new Date(); return new Date(t.getFullYear(), t.getMonth(), t.getDate()); };
+
+async function renderInfo() {
+  const [stats, ov] = await Promise.all([GP.studentStats(), GP.getCol('data_overview')]);   // 학생 이름 없이 반별 숫자만
+  const ovMap = {}; ov.forEach((r) => { ovMap[r._id] = r; });
+  const names = general.classNames, n = names.length;
+  const cnt = (k) => names.map((_, i) => Number((stats[i + 1] || {})[k]) || 0);
+  const sum = (a) => a.reduce((x, y) => x + y, 0);
+  const isM = (s) => /^(남|남자|남성|m|male)$/i.test(GP.str(s.student_gender).trim()), isF = (s) => /^(여|여자|여성|f|female)$/i.test(GP.str(s.student_gender).trim());
+  const all = cnt('all'), m = cnt('m'), f = cnt('f');
+  const th = 'p-2 border-b border-r bg-slate-100 font-bold', td = 'p-2 border-b border-r';
+  const numRow = (label, a) => '<tr><td class="' + th + ' ">' + label + '</td>' + a.map((v) => '<td class="' + td + '">' + v + '</td>').join('') + '<td class="' + td + ' font-bold">' + sum(a) + '</td></tr>';
+  const memoRow = () => '<tr><td class="' + th + '">비고</td>' + names.map((_, i) => '<td class="' + td + '"><input data-c="' + (i + 1) + '" value="' + esc((ovMap['r5_' + general.year] || ovMap.r5 || {})['c' + (i + 1)] || '') + '" class="memo w-full text-center bg-transparent border-b border-dashed border-slate-300 focus:outline-none focus:border-indigo-500"></td>').join('') + '<td class="' + td + '"></td></tr>';
+  const homeRow = () => '<tr><td class="' + th + '">담임</td>' + names.map((c) => '<td class="' + td + '">' + esc(APP.homeroomFor(general, c, todayDate(), semRows)) + '</td>').join('') + '<td class="' + td + '"></td></tr>';
+  const fitInfo = () => {   // 표 너비: 넓은 화면은 최대 너비(구분 5글자·계 3글자·반 8글자)까지만, 좁은 화면은 화면 폭에 딱 맞게
+    const t = document.getElementById('info'), W = t.parentElement.clientWidth;
+    if (W < 768) {
+      const ph = 40, ps = 32, pc = Math.max(20, Math.floor((W - ph - ps - 2) / n));
+      t.classList.add('narrow'); t.style.maxWidth = 'none'; t.style.setProperty('--ph', ph + 'px'); t.style.setProperty('--ps', ps + 'px'); t.style.setProperty('--pc', pc + 'px');
+    } else {
+      const wh = 6, ws = 4, wc = 9, tot = wh + ws + wc * n;   // em 단위 최대 너비(글자 수 + 안쪽 여백)
+      t.classList.remove('narrow'); t.style.maxWidth = tot + 'em'; t.style.setProperty('--ph', (wh / tot * 100).toFixed(3) + '%'); t.style.setProperty('--pc', (wc / tot * 100).toFixed(3) + '%'); t.style.setProperty('--ps', (ws / tot * 100).toFixed(3) + '%');
+    }
+  };
+  window.addEventListener('resize', fitInfo); window.__fitInfo = fitInfo;   // 접힌 표를 펼칠 때 다시 맞춤
+  document.getElementById('info').innerHTML = '<colgroup><col class="ovh">' + names.map(() => '<col class="ovc">').join('') + '<col class="ovs"></colgroup><thead><tr><th class="' + th + '">구분</th>' + names.map((c) => '<th class="' + th + '">' + esc(c) + '</th>').join('') + '<th class="' + th + '">계</th></tr></thead><tbody>' +
+    numRow('학생수', all) + numRow('남', m) + numRow('여', f) + memoRow() + homeRow() + '</tbody>';
+  fitInfo();
+  document.querySelectorAll('.memo').forEach((inp) => inp.onchange = async () => {
+    // 비고는 학년도별 문서(r5_<학년도>)에 저장합니다. 이전 형식(r5)이 있으면 처음 수정할 때 현재 학년도로 옮깁니다.
+    const key = 'r5_' + general.year, cur = ovMap[key], legacy = ovMap.r5, field = 'c' + inp.dataset.c;
+    if (!cur && legacy) { const data = Object.assign({}, legacy); delete data._id; data[field] = inp.value; await GP.commit([{ type: 'set', col: 'data_overview', id: key, data }, { type: 'delete', col: 'data_overview', id: 'r5' }]); ovMap[key] = Object.assign({ _id: key }, data); delete ovMap.r5; }
+    else { await GP.commit([{ type: 'set', merge: true, col: 'data_overview', id: key, data: { [field]: inp.value } }]); ovMap[key] = Object.assign({}, cur || { _id: key }, { [field]: inp.value }); }
+  });
+}
+async function renderCards() {
+  const cards = (await GP.buildBudgetCards()).filter((c) => !String(c.name).includes('친목회비'));
+  document.getElementById('cards').innerHTML = cards.map((c, i) => '<div class="border border-slate-200 rounded-xl p-3 shadow-sm" style="background:' + (c.color || ['#CFE2F3', '#FCE5CD', '#D9EAD3', '#FFFEB5', '#E4D7F5'][i % 5]) + '"><div class="font-bold text-sm border-b pb-1 mb-1">' + esc(c.name) + '</div>' +
+    '<div class="flex justify-between text-xs"><span>배정액</span><b>' + fmt(c.assigned) + '</b></div><div class="flex justify-between text-xs"><span>사용액</span><b>' + fmt(c.used) + '</b></div>' +
+    '<div class="flex justify-between text-sm mt-1 pt-1 border-t"><span>잔액</span><b class="' + (c.balance < 0 ? 'text-red-600' : 'text-blue-700') + '">' + fmt(c.balance) + '</b></div></div>').join('');
+}
+function renderRows() {
+  const t = GP.ymd(todayDate());
+  document.getElementById('body').innerHTML = rows.map((r) => {
+    const cls = (r.isHoliday || r.dow === 0) ? 'row-sun' : r.dow === 6 ? 'row-sat' : '';
+    return '<tr data-key="' + r.key + '" class="border-b last:border-0 align-top ' + cls + (r.key === t ? ' row-today' : '') + '">' +
+      '<td class="p-2 font-bold whitespace-nowrap">' + r.date.getFullYear().toString().slice(2) + '.' + (r.date.getMonth() + 1) + '.' + r.date.getDate() + ' (' + DAYN[r.dow] + ') ' +
+      '<button type="button" class="edit ml-1 align-middle opacity-70 hover:opacity-100" title="수정" data-key="' + r.key + '">✏️</button></td>' +
+      '<td class="p-2 cell">' + esc(r.school) + '</td><td class="p-2 cell">' + (r.lecturerHtml || esc(r.lecturer)) + '</td><td class="p-2 cell">' + esc(r.memo) + '</td></tr>';
+  }).join('');
+}
+// 수정(연필) 버튼: 표가 다시 그려져도 동작하도록 위임 방식으로 처리 (모바일 터치 포함)
+document.getElementById('body').addEventListener('click', (e) => { const b = e.target.closest('.edit'); if (b) openEdit(b.dataset.key).catch((err) => { console.error(err); alert('일정을 불러오지 못했습니다: ' + err.message); }); });
+function scrollToKey(key) {
+  const sc = document.getElementById('scroller'); const tr = sc.querySelector('tr[data-key="' + key + '"]');
+  if (!tr) return; const head = sc.querySelector('thead').offsetHeight;
+  sc.scrollTop = tr.offsetTop - head;
+}
+function applyFilter(f, keepScroll) {
+  filter = f;
+  document.querySelectorAll('#filters button').forEach((b) => b.className = 'px-3 py-1 rounded-md text-sm font-semibold ' + (b.dataset.f === f ? 'bg-white shadow text-indigo-700' : 'text-slate-500'));
+  if (keepScroll) return;
+  const first = rows[0], last = rows[rows.length - 1]; const today = todayDate();
+  const clamp = (d) => (d < first.date ? first.date : d > last.date ? last.date : d);
+  let target = first.date;
+  if (f === 'today') target = clamp(today);
+  if (f === 'week') target = clamp(GP.mondayOf(today));
+  scrollToKey(GP.ymd(target));
+}
+async function load(keepScroll, fresh) {
+  const sc = document.getElementById('scroller'); const prev = sc.scrollTop;
+  if (fresh) GP.fresh();   // 다른 사람이 바꿨는지 확인(1건 읽기)
+  general = await APP.getGeneral(); semRows = await APP.getSemesterRows(general.year);
+  const r = APP.yearRange(general.year);
+  document.getElementById('yearLabel').textContent = general.year + '학년도';
+  document.getElementById('gradeLabel').textContent = general.grade;
+  renderInfo(); renderCards(); APP.renderDayCards(document.getElementById('dayCards'), general.year);   // 일정 계산과 동시에 진행
+  rows = await APP.buildSchedule(r.start, r.end);
+  renderRows(); applyFilter(filter, keepScroll); if (keepScroll) sc.scrollTop = prev;
+}
+async function openEdit(key) {
+  const d = GP.toDate(key); editing = d;
+  const st = await APP.getDayState(d); const row = rows.find((x) => x.key === key);
+  const holMode = st.holiday.length > 0;
+  document.getElementById('mTitle').textContent = GP.appDate(d) + ' 일정 수정';
+  document.getElementById('mHol').checked = holMode;
+  document.getElementById('mSchool').value = (holMode ? st.holiday.map((r) => r.holiday) : st.school.map((r) => r.task_school_name)).join('\n');
+  const notes = [];
+  if (st.publicName) notes.push('공휴일: ' + st.publicName + ' (자동 표시, 수정 불가)');
+  if (holMode && st.school.length) notes.push('같은 날 다른 학교 행사: ' + st.school.map((r) => r.task_school_name).join(' / '));
+  if (st.schoolRange.length) notes.push('기간 일정(관리자 > 학년 기초 설정에서 수정): ' + st.schoolRange.map((r) => r.task_school_name).join(' / '));
+  document.getElementById('mNote').textContent = notes.join('\n');
+  document.getElementById('mLec').value = row ? row.lecturer : '';
+  document.getElementById('mMemo').value = st.memo.map((r) => r.task_memo_name).join('\n');
+  document.getElementById('mMemoNote').textContent = st.memoRange.length ? '기간 일정: ' + st.memoRange.map((r) => r.task_memo_name).join(' / ') : '';
+  document.getElementById('mErr').classList.add('hidden');
+  document.getElementById('modal').classList.remove('hidden'); document.getElementById('modal').classList.add('flex');
+}
+function closeModal() { document.getElementById('modal').classList.add('hidden'); document.getElementById('modal').classList.remove('flex'); }
+document.getElementById('mCancel').onclick = closeModal;
+const showErr = (m) => { const e = document.getElementById('mErr'); e.textContent = m; e.classList.remove('hidden'); };
+document.getElementById('mHol').onchange = () => document.getElementById('mErr').classList.add('hidden');
+document.getElementById('mSchool').oninput = () => document.getElementById('mErr').classList.add('hidden');
+document.getElementById('mSave').onclick = async () => {
+  if (document.getElementById('mHol').checked && !document.getElementById('mSchool').value.trim()) { showErr('학교행사에 휴일이름을 입력하세요'); document.getElementById('mSchool').focus(); return; }
+  const btn = document.getElementById('mSave'); btn.disabled = true; btn.textContent = '저장 중...';
+  try {
+    await APP.saveDay(editing, { schoolText: document.getElementById('mSchool').value, isHoliday: document.getElementById('mHol').checked, memoText: document.getElementById('mMemo').value });
+    closeModal(); await load(true, true);
+  } catch (e) { alert('저장하지 못했습니다: ' + e.message); }
+  btn.disabled = false; btn.textContent = '저장';
+};
+document.querySelectorAll('#filters button').forEach((b) => b.onclick = () => applyFilter(b.dataset.f));
+load(false, false).catch((e) => { console.error(e); alert('데이터를 불러오지 못했습니다: ' + e.message); });
+</script>
+<script>
+  // 학년 개요·학년 예산 접기/펼치기 (처음에는 접힘)
+  document.querySelectorAll('.ov-fold').forEach(function (b) {
+    b.onclick = function () {
+      var box = document.getElementById(b.dataset.fold), open = box.style.display === 'none';
+      box.style.display = open ? '' : 'none'; b.setAttribute('aria-expanded', open ? 'true' : 'false');
+      b.querySelector('.ov-ic').textContent = open ? '▾' : '▸'; b.querySelector('.ov-lb').textContent = open ? '접기' : '펼치기';
+      if (open && window.__fitInfo) try { window.__fitInfo(); } catch (e) {}
+    };
+  });
+</script>
+</body>
+</html>
