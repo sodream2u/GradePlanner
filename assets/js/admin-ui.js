@@ -301,11 +301,11 @@
       });
     }
     const slotCard = () => '<div class="' + CARD + '" style="height:100%;box-sizing:border-box"><h2 class="font-bold text-lg">주간시수배정 <span class="text-xs font-normal text-slate-400">체크한 칸에만 기초시간표 과목을 넣을 수 있습니다</span></h2>' +
-      '<table class="w-full text-center border-collapse text-sm" style="table-layout:fixed"><thead><tr><th class="border bg-slate-100 p-1"></th>' +
+      '<div class="overflow-x-auto"><table class="w-full text-center border-collapse text-sm" style="table-layout:fixed;min-width:' + (60 + SLOT_DAYS.length * 34) + 'px"><colgroup><col style="width:4.5em"></colgroup><thead><tr><th class="border bg-slate-100 p-1"></th>' +
       SLOT_DAYS.map((d, c) => '<th class="border bg-slate-100 p-1"><button data-sday="' + (c + 1) + '" title="요일 전체 선택/해제" class="font-bold w-full">' + d + '</button></th>').join('') + '</tr></thead><tbody>' +
-      times.map((t, r) => '<tr><th class="border bg-slate-50 p-1 text-xs"><button data-sper="' + (r + 1) + '" title="교시 전체 선택/해제" class="font-semibold w-full">' + esc(t) + '</button></th>' +
+      times.map((t, r) => '<tr><th class="border bg-slate-50 p-1 text-xs" style="overflow-wrap:anywhere"><button data-sper="' + (r + 1) + '" title="교시 전체 선택/해제" class="font-semibold w-full">' + esc(t) + '</button></th>' +
         SLOT_DAYS.map((d, c) => '<td class="border p-1"><input type="checkbox" class="w-4 h-4" data-slot="' + (c + 1) + '_' + (r + 1) + '" ' + (off.has((c + 1) + '_' + (r + 1)) ? '' : 'checked') + '></td>').join('') + '</tr>').join('') +
-      '</tbody></table></div>';
+      '</tbody></table></div></div>';
     const range = () => APP.yearRange(g.year);
     const rr = () => { const r = range(); return { min: ymd(r.start), max: ymd(r.end) }; };
     const blankHr = (c) => ({ className: c, teacher: '', terms: ['1학기', '2학기'], period: null });
@@ -418,9 +418,9 @@
         '<div class="space-y-2"><h3 class="font-semibold text-sm text-slate-600">전담교사</h3>' + (spHtml || '<p class="text-sm text-slate-400">등록된 전담교사가 없습니다. (과목은 시간표 설정에서 \'전담\'으로 체크한 과목만 선택됩니다.)</p>') +
         '<button id="addSp" class="' + BTN_G + '">+ 전담교사 추가</button></div></div></div>';
       const periodCard = '<div class="' + CARD + '" style="height:100%;box-sizing:border-box"><h2 class="font-bold text-lg">교시 설정</h2><div class="space-y-2">' +
-        times.map((t, i) => '<div class="flex gap-2"><input data-ti="' + i + '" value="' + esc(t) + '" class="' + INP + ' flex-1"><button data-tins="' + i + '" title="이 교시 아래에 새 교시 끼워넣기" class="text-slate-400 hover:text-blue-600 text-xs whitespace-nowrap">↳끼워넣기</button><button data-tdel="' + i + '" class="text-slate-400 hover:text-red-600">✕</button></div>').join('') +
+        times.map((t, i) => '<div class="flex items-center gap-1.5 min-w-0"><input data-ti="' + i + '" value="' + esc(t) + '" size="6" class="' + INP + ' flex-1 min-w-0 w-0" style="min-width:4.5em"><button data-tins="' + i + '" title="이 교시 아래에 새 교시 끼워넣기" class="shrink-0 text-slate-400 hover:text-blue-600 text-xs whitespace-nowrap px-1">↳끼워넣기</button><button data-tdel="' + i + '" title="이 교시 삭제" class="shrink-0 text-slate-400 hover:text-red-600 px-1">✕</button></div>').join('') +
         '</div><button id="addTime" class="' + BTN_G + '">+ 교시 추가</button></div>';
-      view.innerHTML = '<div class="space-y-5">' + (part === 'year' ? yearCard + '<div class="grid md:grid-cols-3 gap-5"><div>' + periodCard + '</div><div class="min-w-0 md:col-span-2">' + slotCard() + '</div></div>' + evCard : classCard) + '</div>';
+      view.innerHTML = '<div class="space-y-5">' + (part === 'year' ? yearCard + '<style>.gp-prow{display:flex;flex-direction:column;gap:1.25rem}.gp-pcol{min-width:0}.gp-scol{min-width:0;flex:1 1 0}@media (min-width:768px){.gp-prow{flex-direction:row;align-items:stretch}.gp-pcol{flex:0 0 15.5rem;width:15.5rem}}</style><div class="gp-prow"><div class="gp-pcol">' + periodCard + '</div><div class="gp-scol">' + slotCard() + '</div></div>' + evCard : classCard) + '</div>';
       bind();
     });
 
@@ -909,7 +909,10 @@
       '<div class="' + CARD + ' border-red-200"><h2 class="font-bold text-lg text-red-700">데이터 삭제</h2><p class="text-sm text-slate-500">선택한 학년도(2월 1일~다음 해 2월 말일)의 데이터 중 삭제할 항목을 팝업에서 골라 지웁니다.<br>학년도를 바꾸면 명렬표·기초시간표·예산·강좌·이미지·교실배치도·내선번호는 새 학년도에서 빈 화면으로 보이고, 이전 데이터는 여기서 삭제하기 전까지 남아 있습니다.<br><b>삭제되지 않음:</b> 쇼핑몰 ID, 바로가기, 비밀번호, 학급·과목·교시·공간 목록</p>' +
       '<div class="flex gap-2 items-center"><select id="delYear" class="' + INP + '">' + years.map((y) => '<option value="' + y + '">' + y + '학년도</option>').join('') + '</select><button id="delBtn" class="' + BTN + ' bg-red-600 text-white hover:bg-red-700">과거 데이터 삭제</button></div></div>' +
       '<div class="' + CARD + '"><h2 class="font-bold text-lg">임시 저장 데이터 새로고침</h2><p class="text-sm text-slate-500">속도와 사용량을 줄이려고 기기에 저장해 둔 데이터는 앱에서 저장할 때마다 자동으로 갱신됩니다. 파이어베이스 콘솔에서 데이터를 직접 고쳤다면 이 버튼으로 모든 기기가 새로 받게 하세요.</p><button id="resetCache" class="' + BTN_G + '">모든 기기 데이터 새로고침</button></div></div>' +
-      '<div id="dm" class="fixed inset-0 bg-black/40 hidden items-center justify-center p-4 z-50"><div class="bg-white rounded-2xl p-5 w-full max-w-md space-y-3 max-h-[92vh] overflow-y-auto"><h3 class="font-bold text-lg text-red-700">삭제할 항목 선택</h3>' +
+      '<style>@keyframes gpSpin{to{transform:rotate(360deg)}}.gp-spin{width:44px;height:44px;border-radius:50%;border:4px solid #fee2e2;border-top-color:#dc2626;animation:gpSpin .8s linear infinite}.gp-bar{height:8px;border-radius:999px;background:#fee2e2;overflow:hidden}.gp-bar>i{display:block;height:100%;width:0;background:#dc2626;border-radius:999px;transition:width .3s}</style>' +
+      '<div id="dm" class="fixed inset-0 bg-black/40 hidden items-center justify-center p-4 z-50"><div class="bg-white rounded-2xl p-5 w-full max-w-md space-y-3 max-h-[92vh] overflow-y-auto" style="position:relative">' +
+      '<div id="dmBusy" role="status" aria-live="polite" style="display:none;position:absolute;inset:0;z-index:5;background:rgba(255,255,255,.94);border-radius:1rem;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:24px;text-align:center">' +
+      '<div class="gp-spin"></div><div id="dmBusyT" class="font-semibold text-slate-700">삭제하는 중...</div><div class="gp-bar" style="width:80%"><i id="dmBusyBar"></i></div><div class="text-xs text-slate-400">끝날 때까지 창을 닫거나 페이지를 나가지 마세요.</div></div><h3 class="font-bold text-lg text-red-700">삭제할 항목 선택</h3>' +
       '<p class="text-sm text-slate-600"><b id="dmY"></b> 데이터 중 지울 항목을 체크하세요. <b>삭제하면 복구할 수 없습니다.</b></p>' +
       '<div class="flex gap-2 text-xs"><button id="dmAll" type="button" class="' + BTN_G + ' !py-1">전체 선택</button><button id="dmNone" type="button" class="' + BTN_G + ' !py-1">전체 해제</button></div>' +
       '<div id="dmList" class="space-y-1 border rounded-lg p-2 max-h-72 overflow-y-auto text-sm"><p class="text-slate-400 p-2">확인 중...</p></div>' +
@@ -928,19 +931,29 @@
     const refresh = () => { $('dmYes').disabled = $('dmIn').value.trim() !== '과거 데이터 삭제' || !picked().length; };
     $('delBtn').onclick = async () => {
       const y = parseInt($('delYear').value, 10); $('dmY').textContent = y + '학년도'; $('dmIn').value = ''; $('dmYes').disabled = true; $('dmList').innerHTML = '<p class="text-slate-400 p-2">확인 중...</p>'; show(true);
+      const slow = setTimeout(() => { const l = $('dmList'); if (l && /확인 중/.test(l.textContent)) l.innerHTML = '<p class="text-slate-400 p-2">확인 중... 데이터가 많으면 조금 걸립니다(최대 20초쯤).</p>'; }, 4000);
       try {
-        const items = await APP.previewDelete(y);
-        $('dmList').innerHTML = items.map((it) => '<label class="flex items-center gap-2 px-2 py-1 rounded hover:bg-slate-50 ' + (it.count ? '' : 'text-slate-400') + '"><input type="checkbox" data-dk="' + it.key + '" ' + (it.count ? 'checked' : 'disabled') + ' class="w-4 h-4"><span class="flex-1">' + esc(it.label) + '</span><span class="text-xs">' + it.count + '건</span></label>').join('');
+        const items = await APP.previewDelete(y); clearTimeout(slow);
+        if ($('dmY').textContent !== y + '학년도') return;   // 그 사이 다른 학년도를 다시 연 경우
+        $('dmList').innerHTML = items.map((it) => { const unk = it.count < 0;
+          return '<label class="flex items-center gap-2 px-2 py-1 rounded hover:bg-slate-50 ' + (it.count > 0 ? '' : 'text-slate-400') + '"' + (unk ? ' title="시간 안에 개수를 확인하지 못해 이번에는 지울 수 없습니다. 잠시 뒤 다시 열어 보세요."' : '') + '><input type="checkbox" data-dk="' + it.key + '" ' + (it.count > 0 ? 'checked' : 'disabled') + ' class="w-4 h-4"><span class="flex-1">' + esc(it.label) + '</span><span class="text-xs">' + (unk ? '확인 못 함' : it.count + '건') + '</span></label>'; }).join('');
         modal.querySelectorAll('[data-dk]').forEach((c) => c.onchange = refresh); refresh();
-      } catch (e) { console.error(e); $('dmList').innerHTML = '<p class="text-red-600 p-2">확인하지 못했습니다: ' + esc(String(e.message || e)) + '</p>'; }
+      } catch (e) { clearTimeout(slow); console.error(e); $('dmList').innerHTML = '<p class="text-red-600 p-2">확인하지 못했습니다: ' + esc(String(e.message || e)) + '</p>'; }
     };
     $('dmAll').onclick = () => { modal.querySelectorAll('[data-dk]:not(:disabled)').forEach((c) => { c.checked = true; }); refresh(); };
     $('dmNone').onclick = () => { modal.querySelectorAll('[data-dk]').forEach((c) => { c.checked = false; }); refresh(); };
-    $('dmNo').onclick = () => show(false); $('dmIn').oninput = refresh;
+    $('dmNo').onclick = () => { if (!deleting) show(false); }; $('dmIn').oninput = refresh;
+    const busy = (on, t, f) => { const b = $('dmBusy'); if (!b) return; const pn = b.parentElement; if (on && pn.style.overflow !== 'hidden') { pn.scrollTop = 0; pn.style.overflow = 'hidden'; } else if (!on) pn.style.overflow = ''; b.style.display = on ? 'flex' : 'none'; if (t) $('dmBusyT').textContent = t; if (f !== undefined) $('dmBusyBar').style.width = Math.round(f * 100) + '%'; };
+    let deleting = false;
     $('dmYes').onclick = () => guard(async () => {
-      const keys = picked(); if (!keys.length) return;
-      const s = await APP.deleteYear(parseInt($('delYear').value, 10), keys); show(false);
-      toast('삭제 완료 (' + Object.keys(s).map((k) => k + ' ' + s[k]).join(', ') + ')'); renderData();
+      const keys = picked(); if (!keys.length || deleting) return;
+      deleting = true; $('dmYes').disabled = true; $('dmNo').disabled = true; busy(true, '삭제를 시작합니다...', 0);
+      try {
+        const s = await APP.deleteYear(parseInt($('delYear').value, 10), keys, (t, f) => busy(true, t, f));
+        busy(true, '삭제를 마쳤습니다.', 1); await new Promise((r) => setTimeout(r, 400)); show(false);
+        toast('삭제 완료 (' + Object.keys(s).map((k) => k + ' ' + s[k]).join(', ') + ')'); renderData();
+      } finally { deleting = false; busy(false); $('dmNo').disabled = false; refresh(); }
     });
+    window.addEventListener('beforeunload', (e) => { if (deleting) { e.preventDefault(); e.returnValue = ''; } });
   }
 })();
